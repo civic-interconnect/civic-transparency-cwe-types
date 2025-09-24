@@ -19,7 +19,7 @@ Our goals are clarity, privacy-by-design, and low friction for collaborators.
 
 - **Code of Conduct**: Be respectful and constructive. Reports: `info@civicinterconnect.org`.
 - **License**: All contributions are accepted under the repo's **MIT License**.
-- **Namespaces**: We use **PEP 420 implicit namespaces** (no `__init__.py` in shared dirs like `ci/`, `ci/transparency/`, `ci/transparency/cwe/`).
+- **Namespaces**: We use standard Python packages with `__init__.py` files in shared dirs like `ci/`, `ci/transparency/`, `ci/transparency/cwe/` (used by mkdocs).
 - **Typing**: This package ships `py.typed`. Keep types accurate and Pyright/mypy-friendly.
 
 
@@ -72,36 +72,36 @@ Our goals are clarity, privacy-by-design, and low friction for collaborators.
 
 ## DEV 1. Start Locally
 
-
-
 ```bash
-uv venv .venv
-uv pip install -e ".[dev,docs]"
+uv venv
+uv sync --extra dev --extra docs --upgrade 
 pre-commit install
 ```
 
 ## DEV 2. Validate Changes
 
 1. Pull from the GitHub repo.
-2. Purge the pip cache.
+2. Clean the cache.
 3. Reinstall dev+docs extras.
-4. Stage change with git add.
-5. Commit.
-6. Lint and format.
-7. Run pre-commit hooks.
+4. Stage changes with git add.
+5. Use ruff to lint and format.
+6. Run pre-commit hooks (twice if needed).
+7. Run tests.
 8. Build docs (sanity check).
-9. Run tests.
 
 ```shell
+
+## Quick Start
+
+```bash
 git pull
 uv cache clean
-uv pip install -e ".[dev, docs]" --upgrade
+uv sync --extra dev --extra docs --upgrade  --upgrade
 git add .
-git commit -m "Update types"
 uv run ruff check . --fix && uv run ruff format .
 pre-commit run --all-files
-uv run mkdocs build
-pytest -q
+uv run -m pytest -q
+uv run -m mkdocs build
 ```
 
 ## DEV 3. Build and Verify Package
@@ -116,7 +116,7 @@ unzip -l dist/*.whl
 Windows PowerShell (build, extract, clean up)
 
 ```pwsh
-v run python -m build
+uv run python -m build
 
 $TMP = New-Item -ItemType Directory -Path ([System.IO.Path]::GetTempPath()) -Name ("wheel_" + [System.Guid]::NewGuid())
 Expand-Archive dist\*.whl -DestinationPath $TMP.FullName

@@ -7,7 +7,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
-
 > Maintained by [**Civic Interconnect**](https://github.com/civic-interconnect).
 
 - **Documentation:** https://civic-interconnect.github.io/civic-transparency-cwe-types/
@@ -17,14 +16,15 @@
 
 ## Overview
 
-This package provides strongly-typed Python models for the CWE Catalog transparency ecosystem.
-The types are automatically generated from canonical JSON Schema definitions, ensuring consistency and validation at runtime.
+Immutable datatype library for Common Weakness Enumeration (CWE) analysis and validation workflows. Provides strongly-typed Python models with zero runtime dependencies.
 
 **Key Features:**
-- **Type Safety:** Full Pydantic v2 validation with IDE support
-- **Schema Compliance:** Generated directly from official JSON schemas
-- **Privacy-First:** Designed for aggregated, non-PII data exchange
-- **Interoperability:** JSON serialization/deserialization with validation
+
+- **Zero Dependencies:** Pure Python with no external requirements
+- **Immutable Design:** Functional-style helpers return new instances
+- **Type Safety:** Full static typing with py.typed marker
+- **Memory Efficient:** Slotted dataclasses for better performance
+- **CWE Ecosystem:** Foundation types for transparency workflows
 
 ## Installation
 
@@ -33,62 +33,35 @@ pip install civic-transparency-cwe-types
 ```
 
 For development:
+
 ```bash
 pip install "civic-transparency-cwe-types[dev]"
 ```
-
-
 
 ---
 
 ## Quick Start
 
-```bash
-uv venv
-uv pip install -e ".[dev,docs]" --upgrade
-uv run ruff check . --fix && uv run ruff format .
-git add -A
-uv run pre-commit run --all-files
-uv run -m pytest -q
-uv run -m build
-uv run -m mkdocs build
-uv run -m mkdocs serve
+```python
+from ci.transparency.cwe.types.cwe_result_loading import CweLoadingResult, add_cwe
+
+# Create and work with immutable result types
+result = CweLoadingResult()
+result = add_cwe(result, "CWE-79", {"name": "Cross-site Scripting"})
+
+print(f"Loaded CWEs: {result.cwe_count}")
+print(f"Success rate: {result.success_rate}")
 ```
 
-## If Pre-Commit Issues
+See the [Usage Guide](https://civic-interconnect.github.io/civic-transparency-cwe-types/usage/) for more examples.
 
-```
-git add .
-git commit -m "msg" --no-verify
-git push
-```
+## Development Setup
 
-## Publish
-
-```
-uv run -m build
-
-uv run -m mkdocs serve
-uv run -m mkdocs build
-```
-
-
-
----
-
-## Development and Contributing
-
-### For Type Users
-- Report type-related issues here
-- Request documentation improvements
-
-
-### Local Development
 ```bash
 git clone https://github.com/civic-interconnect/civic-transparency-cwe-types
-cd civic-transparency-cwe-types
+cd civic-transparency-cwe-types  
 uv venv
-uv pip install -e ".[dev,docs]"
+uv sync --extra dev --extra docs --upgrade 
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
