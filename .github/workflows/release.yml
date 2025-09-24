@@ -39,7 +39,7 @@ jobs:
         run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv pip install -e ".[dev,docs]" --python 3.12
+        run: uv pip install -e ".[dev,docs]" --system --python 3.12
 
       - name: Build documentation
         run: uv run mkdocs build --strict --python 3.12
@@ -79,7 +79,7 @@ jobs:
         run: echo "Building version ${{ steps.ver.outputs.plain }}"
 
       - name: Assemble. Install all dev dependencies with uv
-        run: uv pip install -e ".[dev,docs]" --python 3.12
+        run: uv pip install -e ".[dev,docs]" --system --python 3.12
 
       - name: Baseline. Run tests (include any validation and coverage)
         run: uv run pytest -q --python 3.12

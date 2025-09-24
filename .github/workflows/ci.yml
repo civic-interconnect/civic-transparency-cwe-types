@@ -56,7 +56,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Assemble. Install all deps with uv
-        run: uv pip install -e ".[dev]" --python ${{ matrix.python-version }}
+        run: uv pip install -e ".[dev]" --system --python ${{ matrix.python-version }}
 
       - name: Baseline. Verify types exist (basic check)
         run: |
@@ -92,7 +92,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Assemble. Install all dev dependencies with uv
-        run: uv pip install -e ".[dev]" --python ${{ matrix.python-version }}
+        run: uv pip install -e ".[dev]" --system --python ${{ matrix.python-version }}
 
       - name: Baseline. Verify types exist and are importable
         run: |
