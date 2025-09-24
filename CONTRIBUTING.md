@@ -22,7 +22,6 @@ Our goals are clarity, privacy-by-design, and low friction for collaborators.
 - **Namespaces**: We use standard Python packages with `__init__.py` files in shared dirs like `ci/`, `ci/transparency/`, `ci/transparency/cwe/` (used by mkdocs).
 - **Typing**: This package ships `py.typed`. Keep types accurate and Pyright/mypy-friendly.
 
-
 ---
 
 ## Before You Start
@@ -38,7 +37,6 @@ Our goals are clarity, privacy-by-design, and low friction for collaborators.
   - **MINOR**: backwards-compatible additions
   - **PATCH**: clarifications/typos
 - Update related docs, examples, and `CHANGELOG.md` when behavior or APIs change.
-
 
 ---
 
@@ -74,7 +72,7 @@ Our goals are clarity, privacy-by-design, and low friction for collaborators.
 
 ```bash
 uv venv
-uv sync --extra dev --extra docs --upgrade 
+uv sync --extra dev --extra docs --upgrade
 pre-commit install
 ```
 
@@ -89,14 +87,12 @@ pre-commit install
 7. Run tests.
 8. Build docs (sanity check).
 
-```shell
-
 ## Quick Start
 
 ```bash
 git pull
 uv cache clean
-uv sync --extra dev --extra docs --upgrade  --upgrade
+uv sync --extra dev --extra docs --upgrade
 git add .
 uv run ruff check . --fix && uv run ruff format .
 pre-commit run --all-files
@@ -108,7 +104,7 @@ uv run -m mkdocs build
 
 Mac/Linux (build and inspect wheel)
 
-```
+```bash
 uv run python -m build
 unzip -l dist/*.whl
 ```

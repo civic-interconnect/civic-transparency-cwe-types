@@ -43,6 +43,13 @@ pip install "civic-transparency-cwe-types[dev]"
 ## Quick Start
 
 ```python
+
+# Multiple result types available
+from ci.transparency.cwe.types.base_result import BaseResult, add_error
+from ci.transparency.cwe.types.schema_result_loading import SchemaLoadingResult
+from ci.transparency.cwe.types.standards_result_validation import StandardsValidationResult
+
+# Import CWE Loading Result and Add CWE function
 from ci.transparency.cwe.types.cwe_result_loading import CweLoadingResult, add_cwe
 
 # Create and work with immutable result types
