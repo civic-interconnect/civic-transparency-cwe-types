@@ -28,17 +28,19 @@ jobs:
           enable-cache: true
 
       - name: Setup Python 3.12
-        run: uv python install 3.12
+        run: |
+          uv python install 3.12
+          uv venv .venv --python 3.12
 
       - name: Assemble. Install all dev dependencies with uv
-        run: uv pip install -e ".[dev,docs]" --system --python 3.12
+        run: uv sync --extra dev,docs
 
       - name: Deploy. Build docs
-        run: uv run mkdocs build --strict --python 3.12
+        run: uv run mkdocs build --strict
 
       - name: Deploy. Deploy docs with Mike and set latest
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          uv run mike deploy --push --update-aliases latest main --python 3.12
-          uv run mike set-default --push latest --python 3.12
+          uv run mike deploy --push --update-aliases latest main
+          uv run mike set-default --push latest

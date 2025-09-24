@@ -53,10 +53,12 @@ jobs:
           enable-cache: true
 
       - name: Setup Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+        run: |
+          uv python install ${{ matrix.python-version }}
+          uv venv .venv --python ${{ matrix.python-version }}
 
-      - name: Assemble. Install all deps with uv
-        run: uv pip install -e ".[dev]" --system --python ${{ matrix.python-version }}
+      - name: Assemble. Install dependencies with uv sync
+        run: uv sync --extra dev,docs
 
       - name: Baseline. Verify types exist (basic check)
         run: |
@@ -69,7 +71,7 @@ jobs:
           echo "Found CWE types: $(find src/ci/transparency/cwe/types -name '*.py' -not -name '__*' | wc -l) files"
 
       - name: Baseline. Verify types import
-        run: uv run python .github/scripts/verify_types.py --python ${{ matrix.python-version }}
+        run: uv run python .github/scripts/verify_types.py
 
   # Main CI Pipeline
   ci:
@@ -89,10 +91,12 @@ jobs:
           enable-cache: true
 
       - name: Setup Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+        run: |
+          uv python install ${{ matrix.python-version }}
+          uv venv .venv --python ${{ matrix.python-version }}
 
-      - name: Assemble. Install all dev dependencies with uv
-        run: uv pip install -e ".[dev]" --system --python ${{ matrix.python-version }}
+      - name: Assemble. Install dependencies with uv sync
+        run: uv sync --extra dev,docs
 
       - name: Baseline. Verify types exist and are importable
         run: |
@@ -111,19 +115,19 @@ jobs:
           echo "Found $type_count CWE type files"
 
       - name: Baseline. Verify types import correctly
-        run: uv run python .github/scripts/verify_types.py --python ${{ matrix.python-version }}
+        run: uv run python .github/scripts/verify_types.py
 
       - name: Baseline. Ruff lint (check only, no fixes in CI)
-        run: uv run ruff check . --python ${{ matrix.python-version }}
+        run: uv run ruff check .
 
       - name: Baseline. Run tests with coverage
-        run: uv run pytest -q --python ${{ matrix.python-version }}
+        run: uv run pytest -q
 
       - name: Coverage. Generate summary
-        run: uv run python .github/scripts/coverage_summary.py --python ${{ matrix.python-version }}
+        run: uv run python .github/scripts/coverage_summary.py
 
       - name: Coverage. Build HTML coverage report
-        run: uv run coverage html --python ${{ matrix.python-version }}
+        run: uv run coverage html
 
       - name: Coverage. Upload coverage artifacts
         uses: actions/upload-artifact@v4
@@ -135,7 +139,7 @@ jobs:
           overwrite: true
 
       - name: Deploy. Build package (sanity check)
-        run: uv run python -m build --python ${{ matrix.python-version }}
+        run: uv run python -m build
 
       - name: Deploy. Build docs (sanity check)
-        run: uv run mkdocs build --strict --python ${{ matrix.python-version }}
+        run: uv run mkdocs build --strict

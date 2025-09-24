@@ -36,13 +36,15 @@ jobs:
           enable-cache: true
 
       - name: Setup Python 3.12
-        run: uv python install 3.12
+        run: |
+          uv python install 3.12
+          uv venv .venv --python 3.12
 
       - name: Install dependencies
-        run: uv pip install -e ".[dev,docs]" --system --python 3.12
+        run: uv sync --extra dev,docs
 
       - name: Build documentation
-        run: uv run mkdocs build --strict --python 3.12
+        run: uv run mkdocs build --strict
 
       - name: Verify API docs generate correctly
         run: |
@@ -68,7 +70,9 @@ jobs:
           enable-cache: true
 
       - name: Setup Python 3.12
-        run: uv python install 3.12
+        run: |
+          uv python install 3.12
+          uv venv .venv --python 3.12
 
       - name: Versioning. Extract plain version from tag (no leading `v`)
         id: ver
@@ -79,18 +83,18 @@ jobs:
         run: echo "Building version ${{ steps.ver.outputs.plain }}"
 
       - name: Assemble. Install all dev dependencies with uv
-        run: uv pip install -e ".[dev,docs]" --system --python 3.12
+        run: uv sync --extra dev,docs
 
       - name: Baseline. Run tests (include any validation and coverage)
-        run: uv run pytest -q --python 3.12
+        run: uv run pytest -q
 
       - name: Deploy. Build sdist + wheel (exact version)
         env:
           SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.ver.outputs.plain }}
-        run: uv run python -m build --python 3.12
+        run: uv run python -m build
 
       - name: Deploy. List built artifacts
-        run: uv run python .github/scripts/list_artifacts.py --python 3.12
+        run: uv run python .github/scripts/list_artifacts.py
 
       - name: Deploy. Create GitHub Release, upload artifacts and set as latest
         uses: softprops/action-gh-release@v2
