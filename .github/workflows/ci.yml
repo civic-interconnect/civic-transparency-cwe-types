@@ -58,7 +58,7 @@ jobs:
           uv venv .venv --python ${{ matrix.python-version }}
 
       - name: Assemble. Install dependencies with uv sync
-        run: uv sync --extra dev,docs
+        run: uv sync --extra dev --extra docs
 
       - name: Baseline. Verify types exist (basic check)
         run: |
@@ -96,7 +96,7 @@ jobs:
           uv venv .venv --python ${{ matrix.python-version }}
 
       - name: Assemble. Install dependencies with uv sync
-        run: uv sync --extra dev,docs
+        run: uv sync --extra dev --extra docs
 
       - name: Baseline. Verify types exist and are importable
         run: |

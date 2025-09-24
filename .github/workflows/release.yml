@@ -41,7 +41,7 @@ jobs:
           uv venv .venv --python 3.12
 
       - name: Install dependencies
-        run: uv sync --extra dev,docs
+        run: uv sync --extra dev --extra docs
 
       - name: Build documentation
         run: uv run mkdocs build --strict
@@ -83,7 +83,7 @@ jobs:
         run: echo "Building version ${{ steps.ver.outputs.plain }}"
 
       - name: Assemble. Install all dev dependencies with uv
-        run: uv sync --extra dev,docs
+        run: uv sync --extra dev --extra docs
 
       - name: Baseline. Run tests (include any validation and coverage)
         run: uv run pytest -q

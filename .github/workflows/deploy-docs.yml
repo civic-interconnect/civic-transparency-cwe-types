@@ -33,7 +33,7 @@ jobs:
           uv venv .venv --python 3.12
 
       - name: Assemble. Install all dev dependencies with uv
-        run: uv sync --extra dev,docs
+        run: uv sync --extra dev --extra docs
 
       - name: Deploy. Build docs
         run: uv run mkdocs build --strict
