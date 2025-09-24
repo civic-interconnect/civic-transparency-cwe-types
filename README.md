@@ -66,9 +66,9 @@ See the [Usage Guide](https://civic-interconnect.github.io/civic-transparency-cw
 
 ```bash
 git clone https://github.com/civic-interconnect/civic-transparency-cwe-types
-cd civic-transparency-cwe-types  
+cd civic-transparency-cwe-types
 uv venv
-uv sync --extra dev --extra docs --upgrade 
+uv sync --extra dev --extra docs --upgrade
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
