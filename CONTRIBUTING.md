@@ -145,7 +145,7 @@ uv run ruff check . --fix && uv run ruff format .
 pre-commit run --all-files # repeat if needed
 git add .
 git commit -m "Prep vx.y.z"
-git push origin main
+git push -u origin main
 
 git tag vx.y.z -m "x.y.z"
 git push origin vx.y.z
