@@ -146,7 +146,7 @@ Ensure the tag is created **after** your changes are merged.
 
 ```bash
 uv run ruff check . --fix && uv run ruff format .
-pre-commit run --all-files
+pre-commit run --all-files # repeat if needed
 git add .
 git commit -m "Prep vx.y.z"
 git push origin main

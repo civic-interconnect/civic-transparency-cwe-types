@@ -49,3 +49,8 @@ build/
 .venv/
 __pycache__/
 .DS_Store
+
+# ----------------------------------------
+# Generated _version by setuptools_scm (always ignore)
+# ----------------------------------------
+_version.py

@@ -5,14 +5,12 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue?logo=python)](#)
 [![CI Status](https://github.com/civic-interconnect/civic-transparency-cwe-types/actions/workflows/ci.yml/badge.svg)](https://github.com/civic-interconnect/civic-transparency-cwe-types/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
-> **Typed Python models (Pydantic v2) for the Civic Transparency schema.**
 
 > Maintained by [**Civic Interconnect**](https://github.com/civic-interconnect).
->
-> - **Documentation:** https://civic-interconnect.github.io/civic-transparency-cwe-types/
+
+- **Documentation:** https://civic-interconnect.github.io/civic-transparency-cwe-types/
 - **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---

@@ -125,7 +125,6 @@ wheels = [
 
 [[package]]
 name = "civic-transparency-cwe-types"
-version = "0.0.1"
 source = { editable = "." }
 
 [package.optional-dependencies]
