@@ -2,44 +2,50 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
         <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/</loc>
-        <lastmod>2025-09-24</lastmod>
+        <lastmod>2025-09-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/"/>
     </url>
     <url>
         <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/usage/</loc>
-        <lastmod>2025-09-24</lastmod>
+        <lastmod>2025-09-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/usage/"/>
     </url>
     <url>
         <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/base/</loc>
-        <lastmod>2025-09-24</lastmod>
+        <lastmod>2025-09-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/base/"/>
     </url>
     <url>
-        <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/common/</loc>
-        <lastmod>2025-09-24</lastmod>
+        <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/batch/</loc>
+        <lastmod>2025-09-26</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/common/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/batch/"/>
     </url>
     <url>
         <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/cwe/</loc>
-        <lastmod>2025-09-24</lastmod>
+        <lastmod>2025-09-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/cwe/"/>
     </url>
     <url>
-        <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/schema/</loc>
-        <lastmod>2025-09-24</lastmod>
+        <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/cwe_schema/</loc>
+        <lastmod>2025-09-26</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/schema/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/cwe_schema/"/>
     </url>
     <url>
         <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/standards/</loc>
-        <lastmod>2025-09-24</lastmod>
+        <lastmod>2025-09-26</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/standards/"/>
+    </url>
+    <url>
+        <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/validation/</loc>
+        <lastmod>2025-09-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/latest/api/validation/"/>
     </url>
 </urlset>
