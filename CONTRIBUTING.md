@@ -99,7 +99,7 @@ uv run ruff check . --fix && uv run ruff format .
 pre-commit run --all-files
 
 # Verify tests pass and meet coverage threshold
-uv run pytest --cov-fail-under=80
+uv run pytest --cov-fail-under=80 "P
 
 # Verify package imports work (Linux/macOS)
 python -c "import ci.transparency.cwe.types; print('Package imports successfully')"

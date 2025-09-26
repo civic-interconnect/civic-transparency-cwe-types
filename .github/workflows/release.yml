@@ -7,11 +7,11 @@ name: CWE Types Release (GH Release + PyPI + versioned docs)
 on:
   push:
     tags:
-      - "v*.*.*"  # trigger only on version tags like v0.0.1
+      - "v*.*.*" # trigger only on version tags like v0.0.1
 
 permissions:
-  contents: write   # create the GitHub Release
-  id-token: write   # PyPI Trusted Publishing (OIDC)
+  contents: write # create the GitHub Release
+  id-token: write # PyPI Trusted Publishing (OIDC)
 
 jobs:
   # First job: Run the full CI suite
@@ -24,11 +24,13 @@ jobs:
   docs-validation:
     name: Verify documentation builds
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout (full history with tags)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.ref }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -55,6 +57,7 @@ jobs:
   # Third job: Only run if both CI and docs pass
   build-and-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [ci-validation, docs-validation]
 
     steps:
@@ -62,6 +65,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.ref }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -84,6 +88,9 @@ jobs:
       - name: Assemble. Install all dev dependencies with uv
         run: uv sync --extra dev --extra docs
 
+      - name: Assemble. Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
+
       - name: Baseline. Run tests (include any validation and coverage)
         run: uv run pytest -q
 
@@ -96,17 +103,25 @@ jobs:
         run: uv run python .github/scripts/list_artifacts.py
 
       - name: Deploy. Create GitHub Release, upload artifacts and set as latest
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}  # e.g., v0.0.1
-          name: ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            dist/*.whl
-            dist/*.tar.gz
-          draft: false
-          prerelease: false
-          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          TAG="${{ github.ref_name }}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" --notes "Automated release" --latest
+          gh release upload "$TAG" dist/*.whl dist/*.tar.gz --clobber
 
+      # First attempt: normal publish with attestations
       - name: Deploy. Publish to PyPI (Trusted Publishing)
         uses: pypa/gh-action-pypi-publish@v1.13.0
+        # keep defaults; attestations enabled (good supply-chain hygiene)
+
+      # If the first attempt fails (often due to transient OIDC/attestation), retry once.
+      # The retry is SAFE: skip anything already uploaded; try again for what failed.
+      - name: Deploy. Publish to PyPI (retry if transient; idempotent)
+        if: failure()
+        uses: pypa/gh-action-pypi-publish@v1.13.0
+        with:
+          skip-existing: true  # don't error if artifacts already present
+          # attestations enabled here as well (default)
