@@ -2,65 +2,86 @@
 
 ```text
 ci/transparency/cwe/types/
-├── __init__.py            # Main entry point (convenience imports)
-├── py.typed               # Type marker (unchanged)
+├── __init__.py            # Main entry point (convenience re-exports)
+├── py.typed               # Type marker
 ├── _version.py            # Version info (SCM-managed)
 │
-├── base/                  # Foundation types
-│   ├── __init__.py        # Base toolkit
+├── base/                  # Foundation types (neutral)
+│   ├── __init__.py
 │   ├── results.py         # BaseResult + BaseLoadingResult + BaseValidationResult + helpers
 │   └── errors.py          # BaseTransparencyError + BaseLoadingError + BaseValidationError
 │
-├── batch/                 # Batch file processing
-│   ├── __init__.py        # Batch toolkit (BatchResult + operations + errors)
-│   ├── results.py         # BatchResult + batch operations
+├── batch/                 # Batch file processing (neutral)
+│   ├── __init__.py
+│   ├── results.py         # BatchResult + batch operations results
 │   └── errors.py          # BatchError + BatchAbortedError + BatchResourceError + etc.
 │
-├── cwe/                   # CWE domain (includes CWE schema subdomain)
-│   ├── __init__.py        # CWE toolkit
-│   ├── results.py         # CweLoadingResult + CweValidationResult + CweRelationshipResult + operations
-│   ├── errors.py          # CweError + CweLoadingError + CweValidationError + CweRelationshipError + etc.
-│   └── schema/            # CWE Schema subdomain
-│       ├── __init__.py    # CWE schema toolkit
-│       ├── results.py     # CweSchemaLoadingResult + CweSchemaValidationResult + CweSchemaFreezeResult + operations
-│       └── errors.py      # CweSchemaError + CweSchemaLoadingError + CweSchemaValidationError + CweSchemaFreezeError + etc.
+├── schema/                # JSON Schema (instance to schema, neutral)
+│   ├── __init__.py
+│   ├── results.py         # SchemaLoadingResult + SchemaValidationResult
+│   └── errors.py          # SchemaError + SchemaLoadingError + SchemaValidationError + etc.
 │
-├── standards/             # Standards domain
-│   ├── __init__.py        # Standards toolkit
-│   ├── results.py         # StandardsLoadingResult + StandardsValidationResult + StandardsMappingResult + operations
-│   └── errors.py          # StandardsError + StandardsLoadingError + StandardsValidationError + StandardsMappingError + etc.
+├── schema_evolution/      # Schema to schema (freeze/compat/diff, neutral)
+│   ├── __init__.py
+│   ├── results.py         # SchemaDiff + SchemaEvolutionReport
+│   └── errors.py          # SchemaFreezeError + SchemaCompatibilityError + etc.
 │
-└── validation/            # Validation tools
-    ├── __init__.py        # Validation toolkit (re-exports phase tools)
-    └── phase/             # Phase-based validation
-        ├── __init__.py    # Phase validation toolkit
-        ├── results.py     # PhaseValidationResult + MultiPhaseValidationResult + operations
+├── cwe/                   # CWE domain (types only or thin re-exports)
+│   ├── __init__.py        # Re-export neutral types under CWE-prefixed names if desired
+│   ├── results.py         # CweLoadingResult + CweValidationResult + domain result holders
+│   ├── errors.py          # CweError + CweLoadingError + CweValidationError (attributes only)
+│   └── schema/            # OPTIONAL: Thin adapters/re-exports of neutral schema types
+│       ├── __init__.py
+│       ├── results.py     # CweSchemaLoadingResult = SchemaLoadingResult (alias)
+│       └── errors.py      # CweSchema*Error = Schema*Error (alias)
+│
+├── standards/             # Standards domain (types only or thin re-exports)
+│   ├── __init__.py
+│   ├── results.py         # StandardsLoadingResult + StandardsValidationResult
+│   └── errors.py          # StandardsError + StandardsLoadingError + etc.
+│
+└── validation/            # Validation workflow types (neutral orchestration)
+    ├── __init__.py
+    └── phase/
+        ├── __init__.py
+        ├── results.py     # PhaseValidationResult + MultiPhaseValidationResult
         └── errors.py      # PhaseError + PhaseAbortedError + PhaseTimeoutError + etc.
+
 ```
 
 ## User Import Patterns
 
 ```
-# Domain-focused (most common)
-from ci.transparency.cwe.types.cwe import CweLoadingResult, CweError, add_cwe
-from ci.transparency.cwe.types.cwe.schema import CweSchemaLoadingResult, CweFreezeViolationError, load_cwe_schema
-from ci.transparency.cwe.types.standards import StandardsLoadingResult, StandardsMappingError, analyze_mappings
-from ci.transparency.cwe.types.batch import BatchResult, skip_file, store_item
-
-# Foundation (for extending)
-from ci.transparency.cwe.types.base import BaseResult, BaseLoadingError, add_error
-
-# Validation workflows
-from ci.transparency.cwe.types.validation.phase import PhaseValidationResult, MultiPhaseValidationResult, add_phase
-
-# Convenience (top-level) - most common operations
-from ci.transparency.cwe.types import (
-    BatchResult, CweLoadingResult, StandardsLoadingResult,
-    PhaseValidationResult, add_cwe, validate_standard
+# Neutral schema (preferred for engines/tools)
+from ci.transparency.cwe.types.schema import (
+    SchemaLoadingResult, SchemaValidationResult,
+    SchemaError, SchemaValidationError,
 )
 
-# Specialized validation tools
-from ci.transparency.cwe.types.validation import PhaseValidationResult, get_multiphase_summary
+from ci.transparency.cwe.types.schema_evolution import (
+    SchemaFreezeError, SchemaCompatibilityError,
+    SchemaEvolutionReport, SchemaDiff,
+)
+
+# Domain-focused (re-exports / aliases; optional ergonomics)
+from ci.transparency.cwe.types.cwe import CweError, CweValidationError
+from ci.transparency.cwe.types.cwe.schema import CweSchemaValidationResult, CweSchemaValidationError
+from ci.transparency.cwe.types.standards import StandardsLoadingResult, StandardsValidationError
+
+# Foundation (to extend)
+from ci.transparency.cwe.types.base import BaseResult, BaseLoadingError
+
+# Validation workflow types
+from ci.transparency.cwe.types.validation.phase import (
+    PhaseValidationResult, MultiPhaseValidationResult
+)
+
+# Convenience (top-level) – curated re-exports
+from ci.transparency.cwe.types import (
+    BatchResult, SchemaValidationResult, SchemaEvolutionReport,
+    PhaseValidationResult,
+)
+
 ```
 
 ## Key Design Principles
@@ -72,6 +93,8 @@ from ci.transparency.cwe.types.validation import PhaseValidationResult, get_mult
 - Consistent patterns across all domains
 - Namespace organization that matches usage patterns:
   - batch/ - File loading infrastructure (used across domains)
+  - schema/ - all schemas
+  - schema_evolution/ - all schema evolution
   - validation/ - Validation workflows and orchestration
   - Domain modules - Toolkits for domain-specific functionality
 - SCM-compatible versioning (no hardcoded versions)

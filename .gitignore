@@ -54,3 +54,8 @@ __pycache__/
 # Generated _version by setuptools_scm (always ignore)
 # ----------------------------------------
 _version.py
+
+# ----------------------------------------
+# Generated website files (always ignore)
+# ----------------------------------------
+site/

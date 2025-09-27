@@ -37,6 +37,18 @@
         <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/api/cwe_schema/"/>
     </url>
     <url>
+        <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/api/schema/</loc>
+        <lastmod>2025-09-27</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/api/schema/"/>
+    </url>
+    <url>
+        <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/api/schema_evolution/</loc>
+        <lastmod>2025-09-27</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://civic-interconnect.github.io/civic-transparency-cwe-types/api/schema_evolution/"/>
+    </url>
+    <url>
         <loc>https://civic-interconnect.github.io/civic-transparency-cwe-types/api/standards/</loc>
         <lastmod>2025-09-27</lastmod>
         <changefreq>daily</changefreq>

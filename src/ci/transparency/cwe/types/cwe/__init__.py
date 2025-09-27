@@ -81,8 +81,6 @@ from .results import (
     get_cwe_loading_summary,
     get_cwe_validation_summary,
     # CWE-specific analysis functions
-    get_cwes_by_category,
-    get_relationship_depth,
     get_relationship_summary,
     track_duplicate_cwe,
     track_invalid_file,
@@ -113,8 +111,6 @@ __all__ = [
     "get_cwe_loading_summary",
     "get_cwe_validation_summary",
     "get_relationship_summary",
-    "get_cwes_by_category",
-    "get_relationship_depth",
     # Base CWE error
     "CweError",
     # CWE loading error types

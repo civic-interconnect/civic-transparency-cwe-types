@@ -31,6 +31,8 @@ nav:
         - Batch: api/batch.md
         - CWE: api/cwe.md
         - CWE Schema: api/cwe_schema.md
+        - Schema: api/schema.md
+        - Schema Evolution: api/schema_evolution.md
         - Standards: api/standards.md
         - Validation: api/validation.md
 
