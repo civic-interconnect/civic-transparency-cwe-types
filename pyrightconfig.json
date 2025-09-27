@@ -1,8 +1,14 @@
 {
   "pythonVersion": "3.12",
   "typeCheckingMode": "strict",
-  "include": [
-    "src/ci/transparency/cwe/types",
-  ],
-  "reportMissingImports": "warning"
+
+  "include": ["src"],
+
+  "exclude": ["tests"],
+
+  "reportMissingImports": "warning",
+
+  "venvPath": ".",
+  "venv": ".venv",
+  "executionEnvironments": [{ "root": "src", "extraPaths": ["src"] }]
 }

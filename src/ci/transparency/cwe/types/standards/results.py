@@ -174,7 +174,7 @@ class StandardsLoadingResult(BaseLoadingResult):
         """
         return cls.from_result(
             batch_result,
-            standards=batch_result.mappings,  # type: ignore[arg-type]
+            standards=batch_result.items,  # type: ignore[arg-type]
             skipped_files=batch_result.skipped_files,
         )
 
@@ -697,9 +697,9 @@ def add_mapping(
         New result with mapping added
     """
     current_mappings = result.mapping_results.get(standard_id, [])
-    new_mappings = current_mappings + [target_id]
+    new_items = current_mappings + [target_id]
 
-    new_results = {**result.mapping_results, standard_id: new_mappings}
+    new_results = {**result.mapping_results, standard_id: new_items}
     new_types = {**result.mapping_types}
     new_types[mapping_type] = new_types.get(mapping_type, 0) + 1
 

@@ -223,7 +223,7 @@ class TestStandardsLoadingResult:
         skipped_files = (Path("readme.txt"),)
 
         batch_result = BatchResult(
-            mappings=batch_data,
+            items=batch_data,
             skipped_files=skipped_files,
             loaded=2,
             failed=0

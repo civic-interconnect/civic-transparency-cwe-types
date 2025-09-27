@@ -61,8 +61,8 @@ from .results import (
     # Result types
     BatchResult,
     analyze_batch_performance,
-    clear_mappings,
-    filter_mappings,
+    clear_items,
+    filter_items,
     # Batch analysis
     get_batch_summary,
     initialize_batch_with_file_types,
@@ -88,8 +88,8 @@ __all__ = [
     "track_file_type",
     "mark_processed",
     "update_file_type_stats",
-    "clear_mappings",
-    "filter_mappings",
+    "clear_items",
+    "filter_items",
     # Analysis and reporting
     "get_batch_summary",
     "analyze_batch_performance",

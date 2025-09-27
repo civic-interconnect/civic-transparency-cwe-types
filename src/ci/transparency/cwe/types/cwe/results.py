@@ -153,7 +153,7 @@ class CweLoadingResult(BaseLoadingResult):
         """
         return cls.from_result(
             batch_result,
-            cwes=batch_result.mappings,  # type: ignore[arg-type]
+            cwes=batch_result.items,  # type: ignore[arg-type]
             skipped_files=batch_result.skipped_files,
         )
 

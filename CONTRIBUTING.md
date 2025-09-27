@@ -99,7 +99,7 @@ uv run ruff check . --fix && uv run ruff format .
 pre-commit run --all-files
 
 # Verify tests pass and meet coverage threshold
-uv run pytest --cov-fail-under=80 "P
+uv run pytest --cov-fail-under=80 "tests/"
 
 # Verify package imports work (Linux/macOS)
 python -c "import ci.transparency.cwe.types; print('Package imports successfully')"
@@ -147,7 +147,7 @@ Remove-Item -Recurse -Force $TMP
 uv run mkdocs serve
 ```
 
-Open: <http://127.0.0.1:8000/>
+Open: <http://127.0.0.1:8000/>. Use CTRL c to close the process when done.
 
 **Verify docs look correct:**
 
@@ -176,13 +176,13 @@ uv run ruff check . --fix && uv run ruff format .
 pre-commit run --all-files
 uv run pytest --cov-fail-under=80
 
-# Package verification
+# Package verification (use correct command for your os)
 uv run python -m build
-python -c "import ci.transparency.cwe.types; print('✓ Package imports')"
+python -c "import ci.transparency.cwe.types; print('Package imports successfully')"
+py -c 'import ci.transparency.cwe.types; print("Package imports successfully")'
 
 # Documentation verification
 uv run mkdocs build
-echo "✓ Docs build successfully"
 
 # Final commit and tag
 git add .

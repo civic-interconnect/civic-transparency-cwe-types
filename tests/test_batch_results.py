@@ -15,8 +15,8 @@ from ci.transparency.cwe.types.batch import (
     track_file_type,
     mark_processed,
     update_file_type_stats,
-    clear_mappings,
-    filter_mappings,
+    clear_items,
+    filter_items,
     get_batch_summary,
     analyze_batch_performance,
     process_file_result,
@@ -32,7 +32,7 @@ class TestBatchResult:
         """Test creating empty BatchResult."""
         result = BatchResult()
 
-        assert result.mappings == {}
+        assert result.items == {}
         assert result.file_types == {}
         assert result.processed_files == ()
         assert result.skipped_files == ()
@@ -43,18 +43,18 @@ class TestBatchResult:
 
     def test_batch_result_with_data(self):
         """Test BatchResult with initial data."""
-        mappings: Dict[str, Dict[str, Any]] = {"key1": {"data": "value1"}, "key2": {"data": "value2"}}
+        items: Dict[str, Dict[str, Any]] = {"key1": {"data": "value1"}, "key2": {"data": "value2"}}
         processed = (Path("file1.yaml"), Path("file2.yaml"))
 
         result = BatchResult(
-            mappings=mappings,
+            items=items,
             processed_files=processed,
             loaded=2,
             failed=1
         )
 
-        assert len(result.mappings) == 2
-        assert len(result.mappings) == 2
+        assert len(result.items) == 2
+        assert len(result.items) == 2
         assert result.processed_file_count == 2
         assert result.loaded == 2
         assert result.failed == 1
@@ -64,10 +64,10 @@ class TestBatchResult:
     def test_has_items_property(self):
         """Test has_items property."""
         empty_result = BatchResult()
-        assert len(empty_result.mappings) == 0  # Check if empty instead of has_items property
+        assert len(empty_result.items) == 0  # Check if empty instead of has_items property
 
-        result_with_items = BatchResult(mappings={"key": {"value": "value"}})
-        assert len(result_with_items.mappings) > 0  # Check if has items instead of has_items property
+        result_with_items = BatchResult(items={"key": {"value": "value"}})
+        assert len(result_with_items.items) > 0  # Check if has items instead of has_items property
 
     def test_has_processed_files_property(self):
         """Test has_processed_files property."""
@@ -107,8 +107,8 @@ class TestBatchOperations:
 
         new_result = store_item(result, "test", data, file_path=file_path)
 
-        assert "test" in new_result.mappings
-        assert new_result.mappings["test"] == data
+        assert "test" in new_result.items
+        assert new_result.items["test"] == data
         assert file_path in new_result.processed_files
         assert new_result.loaded == 1
         assert new_result.file_types.get("yaml") == 1
@@ -121,18 +121,18 @@ class TestBatchOperations:
 
         new_result = store_item(result, "key", data, file_path=file_path)
 
-        assert "key" in new_result.mappings
+        assert "key" in new_result.items
         assert new_result.loaded == 1
         assert len(new_result.processed_files) == 1  # File is tracked
 
     def test_store_item_duplicate_key(self):
         """Test storing item with duplicate key overwrites."""
-        result = BatchResult(mappings={"key": {"old": "value"}})  # Use proper dict structure
+        result = BatchResult(items={"key": {"old": "value"}})  # Use proper dict structure
         file_path = Path("test.yaml")
 
         new_result = store_item(result, "key", {"new": "value"}, file_path=file_path)
 
-        assert new_result.mappings["key"] == {"new": "value"}
+        assert new_result.items["key"] == {"new": "value"}
         assert new_result.loaded == 1
 
     def test_skip_file(self):
@@ -191,31 +191,31 @@ class TestBatchOperations:
 
         assert new_result.file_types == {"yaml": 5, "json": 3}
 
-    def test_clear_mappings(self):
-        """Test clearing mappings."""
-        result = BatchResult(mappings={"key1": {"value": "value1"}, "key2": {"value": "value2"}})
+    def test_clear_items(self):
+        """Test clearing items."""
+        result = BatchResult(items={"key1": {"value": "value1"}, "key2": {"value": "value2"}})
 
-        new_result = clear_mappings(result)
+        new_result = clear_items(result)
 
-        assert new_result.mappings == {}
+        assert new_result.items == {}
 
-    def test_filter_mappings(self):
-        """Test filtering mappings."""
-        mappings: Dict[str, Dict[str, Any]] = {
+    def test_filter_items(self):
+        """Test filtering items."""
+        items: Dict[str, Dict[str, Any]] = {
             "keep": {"value": "value1"},
             "remove": {"value": "value2"},
             "keep_too": {"value": "value3"}
         }
-        result = BatchResult(mappings=mappings)
+        result = BatchResult(items=items)
 
         def keep_filter(key: str, value: Dict[str, Any]) -> bool:
             return "keep" in key
 
-        new_result = filter_mappings(result, keep_filter)
+        new_result = filter_items(result, keep_filter)
 
-        assert "keep" in new_result.mappings
-        assert "keep_too" in new_result.mappings
-        assert "remove" not in new_result.mappings
+        assert "keep" in new_result.items
+        assert "keep_too" in new_result.items
+        assert "remove" not in new_result.items
 
 
 class TestBatchAnalysis:
@@ -235,7 +235,7 @@ class TestBatchAnalysis:
     def test_get_batch_summary_with_data(self):
         """Test batch summary with data."""
         result = BatchResult(
-            mappings={"key1": {"value": "value1"}, "key2": {"value": "value2"}},
+            items={"key1": {"value": "value1"}, "key2": {"value": "value2"}},
             processed_files=(Path("file1.yaml"), Path("file2.json")),
             file_types={"yaml": 1, "json": 1},
             loaded=2,
@@ -288,7 +288,7 @@ class TestBatchAnalysis:
 
         new_result = process_file_result(result, file_path, file_result, "success context")
 
-        assert "key" in new_result.mappings
+        assert "key" in new_result.items
         assert file_path in new_result.processed_files
         assert new_result.loaded == 1
 
@@ -317,14 +317,14 @@ class TestBatchAnalysis:
     def test_merge_batch_results(self):
         """Test merging multiple batch results."""
         result1 = BatchResult(
-            mappings={"key1": {"value": "value1"}},
+            items={"key1": {"value": "value1"}},
             loaded=1,
             failed=0,
             file_types={"yaml": 1}
         )
 
         result2 = BatchResult(
-            mappings={"key2": {"value": "value2"}},
+            items={"key2": {"value": "value2"}},
             loaded=1,
             failed=1,
             file_types={"json": 1},
@@ -333,9 +333,9 @@ class TestBatchAnalysis:
 
         merged = merge_batch_results(result1, result2)
 
-        assert len(merged.mappings) == 2
-        assert "key1" in merged.mappings
-        assert "key2" in merged.mappings
+        assert len(merged.items) == 2
+        assert "key1" in merged.items
+        assert "key2" in merged.items
         assert merged.loaded == 2
         assert merged.failed == 1
         assert merged.file_types == {"yaml": 1, "json": 1}
@@ -353,7 +353,7 @@ class TestBatchResultEdgeCases:
         # Store empty dict instead of None (store_item requires dict[str, Any])
         new_result = store_item(result, "key", {}, file_path=file_path)
 
-        assert new_result.mappings["key"] == {}
+        assert new_result.items["key"] == {}
         assert new_result.loaded == 1
 
     def test_track_file_type_no_extension(self):
@@ -365,16 +365,16 @@ class TestBatchResultEdgeCases:
 
         assert new_result.file_types.get("") == 1
 
-    def test_filter_mappings_empty_result(self):
-        """Test filtering empty mappings."""
+    def test_filter_items_empty_result(self):
+        """Test filtering empty items."""
         result = BatchResult()
 
         def always_true(key: str, value: Dict[str, Any]) -> bool:
             return True
 
-        new_result = filter_mappings(result, always_true)
+        new_result = filter_items(result, always_true)
 
-        assert new_result.mappings == {}
+        assert new_result.items == {}
 
     def test_success_rate_with_no_processing(self):
         """Test success rate when no processing occurred."""
@@ -389,5 +389,5 @@ class TestBatchResultEdgeCases:
 
         new_result = store_item(original, "key", {"value": "value"}, file_path=file_path)
 
-        assert len(original.mappings) == 0
-        assert len(new_result.mappings) == 1
+        assert len(original.items) == 0
+        assert len(new_result.items) == 1

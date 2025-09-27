@@ -26,7 +26,7 @@ class TestBatchToDomainConversions:
         }
 
         return BatchResult(
-            mappings=cwe_data,
+            items=cwe_data,
             file_types={"yaml": 2},
             processed_files=(Path("cwe-79.yaml"), Path("cwe-89.yaml")),
             skipped_files=(Path("invalid.txt"),),
@@ -70,7 +70,7 @@ class TestBatchToDomainConversions:
             "ISO-27001": {"id": "ISO-27001", "framework": "ISO", "version": "2022"}
         }
         standards_batch = BatchResult(
-            mappings=standards_data,
+            items=standards_data,
             loaded=2,
             failed=0,
             file_types={"yaml": 2}
@@ -335,7 +335,7 @@ class TestConversionEdgeCases:
     def test_conversion_with_empty_data(self):
         """Test conversions handle empty dict values appropriately."""
         # Use empty dict instead of None to match type requirements
-        batch_result = BatchResult(mappings={"key": {}})
+        batch_result = BatchResult(items={"key": {}})
 
         cwe_result = CweLoadingResult.from_batch(batch_result)
 
@@ -351,7 +351,7 @@ class TestConversionEdgeCases:
         # Original should be unchanged
         assert original_batch.loaded == 5
         assert original_batch.failed == 2
-        assert len(original_batch.mappings) == 0
+        assert len(original_batch.items) == 0
 
         # New result should be independent
         assert cwe_result.loaded == 5
@@ -410,7 +410,7 @@ class TestConversionEdgeCases:
             loaded=15,
             failed=3,
             errors=("Original error",),
-            mappings={"item1": {"data": "test"}}
+            items={"item1": {"data": "test"}}
         )
 
         # Convert to CWE

@@ -1,11 +1,11 @@
 """Batch loading result types and operations.
 
-Immutable, slotted dataclass for tracking batch file loading with mappings,
+Immutable, slotted dataclass for tracking batch file loading with items,
 processed files, and file type statistics. Built on BaseLoadingResult for
 count tracking and error handling.
 
 Core type:
-    - BatchResult: Tracks batch loading with mappings, file statistics, and processing details
+    - BatchResult: Tracks batch loading with items, file statistics, and processing details
 
 Key operations:
     - store_item: Add successfully loaded item to batch result
@@ -15,7 +15,7 @@ Key operations:
 
 Design principles:
     - Immutable: uses dataclasses.replace for all modifications
-    - Generic: works with any file loading operation that produces key-value mappings
+    - Generic: works with any file loading operation that produces key-value items
     - Type-aware: tracks file types and processing statistics
     - Conversion-ready: easily converts to domain-specific result types
 """
@@ -28,8 +28,8 @@ from typing import Any
 from ci.transparency.cwe.types.base import BaseLoadingResult
 
 
-def _new_mappings() -> dict[str, dict[str, Any]]:
-    """Typed default factory for mappings dictionary."""
+def _new_items() -> dict[str, dict[str, Any]]:
+    """Typed default factory for items dictionary."""
     return {}
 
 
@@ -42,12 +42,12 @@ def _new_file_types() -> dict[str, int]:
 class BatchResult(BaseLoadingResult):
     """Result from generic batch file loading operations.
 
-    Tracks loaded mappings, processed files, and file type statistics.
+    Tracks loaded items, processed files, and file type statistics.
     Serves as the foundation for domain-specific loading operations.
     Extends BaseLoadingResult to provide loaded/failed counts and conversion protocol.
     """
 
-    mappings: dict[str, dict[str, Any]] = field(default_factory=_new_mappings)
+    items: dict[str, dict[str, Any]] = field(default_factory=_new_items)
     processed_files: tuple[Path, ...] = ()
     skipped_files: tuple[Path, ...] = ()
     file_types: dict[str, int] = field(default_factory=_new_file_types)
@@ -55,9 +55,9 @@ class BatchResult(BaseLoadingResult):
     # ---- Derived metrics for batch operations ----
 
     @property
-    def mapping_count(self) -> int:
-        """Number of key-value mappings successfully loaded."""
-        return len(self.mappings)
+    def item_count(self) -> int:
+        """Number of key-value items successfully loaded."""
+        return len(self.items)
 
     @property
     def total_files_processed(self) -> int:
@@ -65,9 +65,9 @@ class BatchResult(BaseLoadingResult):
         return len(self.processed_files) + len(self.skipped_files)
 
     @property
-    def has_mappings(self) -> bool:
-        """True if any mappings were successfully loaded."""
-        return bool(self.mappings)
+    def has_items(self) -> bool:
+        """True if any items were successfully loaded."""
+        return bool(self.items)
 
     @property
     def file_type_count(self) -> int:
@@ -86,8 +86,8 @@ class BatchResult(BaseLoadingResult):
 
     @property
     def items_stored(self) -> int:
-        """Return the number of items stored in the mappings."""
-        return len(self.mappings)
+        """Return the number of items stored."""
+        return len(self.items)
 
     # ---- File type analysis ----
 
@@ -148,27 +148,75 @@ class BatchResult(BaseLoadingResult):
         """
         return file_path in self.skipped_files
 
-    def get_mapping_for_file(self, file_path: Path) -> dict[str, Any] | None:
-        """Get the mapping that was loaded from a specific file.
+    def get_item_for_file(self, file_path: Path) -> dict[str, Any] | None:
+        """Get the item that was loaded from a specific file.
 
         Args:
             file_path: Path to the source file
 
         Returns:
-            The mapping data, or None if file wasn't processed or no mapping found
+            The item data, or None if file wasn't processed or no item found
         """
         if not self.was_file_processed(file_path):
             return None
 
-        # Linear search through mappings - could be optimized with reverse index
-        for mapping_data in self.mappings.values():
-            # Check if mapping has metadata pointing to this file
-            metadata = mapping_data.get("_metadata", {})
+        # Linear search through items - could be optimized with reverse index
+        for item_data in self.items.values():
+            # Check if item has metadata pointing to this file
+            metadata = item_data.get("_metadata", {})
             source_file = metadata.get("source_file")
             if source_file and Path(source_file) == file_path:
-                return mapping_data
+                return item_data
 
         return None
+
+    # ---- Generic item access methods ----
+
+    def get_item_by_key(self, key: str) -> dict[str, Any] | None:
+        """Get a specific item by its key.
+
+        Args:
+            key: The key to look up
+
+        Returns:
+            The item data, or None if key not found
+        """
+        return self.items.get(key)
+
+    def has_item_key(self, key: str) -> bool:
+        """Check if a specific key exists in items.
+
+        Args:
+            key: The key to check
+
+        Returns:
+            True if key exists
+        """
+        return key in self.items
+
+    def get_item_keys(self) -> list[str]:
+        """Get all item keys.
+
+        Returns:
+            List of all keys in items dictionary
+        """
+        return list(self.items.keys())
+
+    def get_item_values(self) -> list[dict[str, Any]]:
+        """Get all item values.
+
+        Returns:
+            List of all values in items dictionary
+        """
+        return list(self.items.values())
+
+    def get_items(self) -> dict[str, dict[str, Any]]:
+        """Get a copy of all items.
+
+        Returns:
+            Copy of the items dictionary
+        """
+        return self.items.copy()
 
 
 # ============================================================================
@@ -190,10 +238,10 @@ def store_item(
     Returns:
         New result with item stored
     """
-    new_mappings = {**result.mappings, key: value}
+    new_items = {**result.items, key: value}
     result = replace(
         result,
-        mappings=new_mappings,
+        items=new_items,
         loaded=result.loaded + 1,
     )
 
@@ -218,16 +266,16 @@ def skip_file(result: BatchResult, file_path: Path, reason: str) -> BatchResult:
     Returns:
         New result with skipped file recorded
     """
-    from ci.transparency.cwe.types.base import add_warning  # Use warning, not info
+    from ci.transparency.cwe.types.base import add_warning
 
     warning_message = f"Skipped {file_path.name}: {reason}"
-    result = add_warning(result, warning_message)  # Changed from add_info to add_warning
+    result = add_warning(result, warning_message)
 
     new_skipped = result.skipped_files + (file_path,)
     return replace(
         result,
         skipped_files=new_skipped,
-        failed=result.failed + 1,  # Increment failed count as expected by test
+        failed=result.failed + 1,
     )
 
 
@@ -297,8 +345,8 @@ def update_file_type_stats[R: BatchResult](result: R, file_type: str, count: int
     return replace(result, file_types=new_types)
 
 
-def clear_mappings[R: BatchResult](result: R) -> R:
-    """Remove all mappings from the batch result.
+def clear_items[R: BatchResult](result: R) -> R:
+    """Remove all items from the batch result.
 
     Useful for creating a fresh result while preserving file statistics.
 
@@ -306,32 +354,30 @@ def clear_mappings[R: BatchResult](result: R) -> R:
         result: The batch result to clear
 
     Returns:
-        New result with empty mappings dictionary
+        New result with empty items dictionary
     """
-    return replace(result, mappings={})
+    return replace(result, items={})
 
 
-def filter_mappings[R: BatchResult](
-    result: R, predicate: Callable[[str, dict[str, Any]], bool]
-) -> R:
-    """Filter mappings based on a predicate function.
+def filter_items[R: BatchResult](result: R, predicate: Callable[[str, dict[str, Any]], bool]) -> R:
+    """Filter items based on a predicate function.
 
     Args:
         result: The batch result to filter
-        predicate: Function that takes (key, data) and returns True to keep the mapping
+        predicate: Function that takes (key, data) and returns True to keep the item
 
     Returns:
-        New result with filtered mappings
+        New result with filtered items
     """
-    filtered_mappings = {key: data for key, data in result.mappings.items() if predicate(key, data)}
+    filtered_items = {key: data for key, data in result.items.items() if predicate(key, data)}
 
-    # Adjust loaded count to match filtered mappings
-    new_loaded = len(filtered_mappings)
-    removed_count = result.mapping_count - new_loaded
+    # Adjust loaded count to match filtered items
+    new_loaded = len(filtered_items)
+    removed_count = result.item_count - new_loaded
 
     return replace(
         result,
-        mappings=filtered_mappings,
+        items=filtered_items,
         loaded=new_loaded,
         failed=result.failed + removed_count,
     )
@@ -357,14 +403,14 @@ def get_batch_summary(result: BatchResult) -> dict[str, Any]:
         # Core metrics (matching test expectations)
         "items_stored": result.items_stored,
         "files_processed": len(result.processed_files),
-        "successful_loads": result.loaded,  # Changed from files_loaded
+        "successful_loads": result.loaded,
         "failed_loads": result.failed,
         "files_skipped": len(result.skipped_files),
         # Success metrics
         "success_rate_percent": round(result.success_rate * 100, 2),
         "efficiency_score": performance["efficiency_score"],
-        # File type analysis (matching test key name)
-        "file_type_breakdown": dict(result.file_types),  # Changed from file_types
+        # File type analysis
+        "file_type_breakdown": dict(result.file_types),
         "file_type_count": len(result.file_types),
         # Message counts
         "error_count": result.error_count,
@@ -397,7 +443,7 @@ def analyze_batch_performance(result: BatchResult) -> dict[str, Any]:
     # Calculate efficiency score (0.0 to 1.0)
     efficiency_score = 1.0 if total_operations == 0 else result.loaded / total_operations
 
-    # Calculate error rate (0.0 to 1.0) - key that was missing
+    # Calculate error rate (0.0 to 1.0)
     error_rate = 0.0 if total_operations == 0 else result.failed / total_operations
 
     # Calculate processing rates
@@ -412,13 +458,13 @@ def analyze_batch_performance(result: BatchResult) -> dict[str, Any]:
 
     return {
         "efficiency_score": round(efficiency_score, 3),
-        "error_rate": round(error_rate, 3),  # Added missing key
+        "error_rate": round(error_rate, 3),
         "items_per_file": round(items_per_file, 2),
         "total_operations": total_operations,
         "success_rate": round(result.success_rate, 3),
         "file_types_processed": len(result.file_types),
-        "file_type_diversity": len(result.file_types),  # Added for test
-        "dominant_file_type": dominant_file_type,  # Added for test
+        "file_type_diversity": len(result.file_types),
+        "dominant_file_type": dominant_file_type,
         "average_items_per_type": (
             round(result.items_stored / len(result.file_types), 2) if result.file_types else 0
         ),
@@ -497,7 +543,7 @@ def merge_batch_results[R: BatchResult](primary: R, *others: R) -> R:
         result = merge_loading(result, other)
 
         # Merge batch-specific data
-        new_mappings = {**result.mappings, **other.mappings}
+        new_items = {**result.items, **other.items}
         new_processed = result.processed_files + other.processed_files
         new_skipped = result.skipped_files + other.skipped_files
 
@@ -508,10 +554,56 @@ def merge_batch_results[R: BatchResult](primary: R, *others: R) -> R:
 
         result = replace(
             result,
-            mappings=new_mappings,
+            items=new_items,
             processed_files=new_processed,
             skipped_files=new_skipped,
             file_types=new_file_types,
         )
 
     return result
+
+
+# ============================================================================
+# Item access convenience functions
+# ============================================================================
+
+
+def get_item_count(result: BatchResult) -> int:
+    """Get the number of items stored."""
+    return result.item_count
+
+
+def has_any_items(result: BatchResult) -> bool:
+    """Check if result has any items."""
+    return result.has_items
+
+
+def get_all_item_keys(result: BatchResult) -> list[str]:
+    """Get all item keys as a list."""
+    return result.get_item_keys()
+
+
+def find_items_by_pattern(result: BatchResult, key_pattern: str) -> dict[str, dict[str, Any]]:
+    """Find items whose keys match a pattern.
+
+    Args:
+        result: BatchResult to search
+        key_pattern: Pattern to match (simple string contains)
+
+    Returns:
+        Dictionary of matching items
+    """
+    return {key: data for key, data in result.items.items() if key_pattern in key}
+
+
+def get_items_with_field(result: BatchResult, field_name: str) -> dict[str, dict[str, Any]]:
+    """Get items that contain a specific field.
+
+    Args:
+        result: BatchResult to search
+        field_name: Field name to look for
+
+    Returns:
+        Dictionary of items that contain the field
+    """
+    return {key: data for key, data in result.items.items() if field_name in data}
