@@ -17,6 +17,7 @@ from ci.transparency.cwe.types.base.collections import (
 )
 from ci.transparency.cwe.types.base.counts import LoadingCounts, ValidationCounts
 from ci.transparency.cwe.types.base.messages import MessageCollection
+from ci.transparency.cwe.types.base.result_helpers import with_message_methods
 
 # ============================================================================
 # Typed structures for CWE data
@@ -70,6 +71,7 @@ class CweItemDict(TypedDict, total=False):
 # ============================================================================
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class CweLoadingResult:
     """Represents the result of loading CWE data using composition.
@@ -143,6 +145,7 @@ class CweLoadingResult:
         }
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class CweValidationResult:
     """Represents the result of validating CWE data using composition.
@@ -236,6 +239,7 @@ class CweValidationResult:
         }
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class CweRelationshipResult:
     """Result from CWE relationship validation and analysis using composition.

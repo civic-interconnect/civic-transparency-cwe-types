@@ -175,7 +175,8 @@ We use **setuptools-scm**; version derives from **git tags**.
 
 ```bash
 git add .
-uv run ruff check . --fix && uv run ruff format .
+uv run ruff check . --fix
+uv run ruff format .
 pre-commit run --all-files
 uv run pyright
 uv run pytest --cov-fail-under=80

@@ -33,6 +33,7 @@ from ci.transparency.cwe.types.base.collections import (
 )
 from ci.transparency.cwe.types.base.counts import LoadingCounts, ValidationCounts
 from ci.transparency.cwe.types.base.messages import MessageCollection
+from ci.transparency.cwe.types.base.result_helpers import with_message_methods
 
 # ============================================================================
 # Typed structures for standards data
@@ -84,6 +85,7 @@ type MappingSummaryDict = dict[str, Any]
 # ============================================================================
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class StandardsLoadingResult:
     """Represents the result of loading standards data using composition.
@@ -104,6 +106,8 @@ class StandardsLoadingResult:
         Statistics for frameworks encountered.
     duplicates : DuplicateCollection
         Tracking of duplicate IDs and their associated files.
+    _format_breakdown : dict[str, int]
+        Tracks format usage breakdown.
     """
 
     standards: StandardsDataDict = cast("StandardsDataDict", field(default_factory=dict))
@@ -112,6 +116,7 @@ class StandardsLoadingResult:
     files: FileCollection = field(default_factory=FileCollection)
     frameworks: FrameworkCollection = field(default_factory=FrameworkCollection)
     duplicates: DuplicateCollection = field(default_factory=DuplicateCollection)
+    _format_breakdown: dict[str, int] = field(default_factory=lambda: {})
 
     @property
     def standards_count(self) -> int:
@@ -165,7 +170,15 @@ class StandardsLoadingResult:
             total_controls += len(controls)
         return total_controls
 
+    def add_format_info(self, format_version: str) -> "StandardsLoadingResult":
+        """Track format usage."""
+        if not hasattr(self, "_format_breakdown"):
+            object.__setattr__(self, "_format_breakdown", {})
+        self._format_breakdown[format_version] = self._format_breakdown.get(format_version, 0) + 1
+        return self
 
+
+@with_message_methods
 @dataclass(frozen=True)
 class StandardsValidationResult:
     """Represents the result of validating standards data using composition.
@@ -241,6 +254,7 @@ class StandardsValidationResult:
         return self.validation_details.get(standard_id, [])
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class StandardsMappingResult:
     """Result from standards mapping validation and analysis using composition.
@@ -810,13 +824,13 @@ __all__ = [
     "get_standards_loading_summary",
     "get_standards_validation_summary",
     "get_mapping_summary",
-    # Composition helpers
-    "add_message",
-    "increment_loading_counts",
-    "increment_validation_counts",
-    "add_processed_file",
-    "add_failed_file",
-    "add_skipped_file",
-    "add_framework",
-    "add_duplicate",
+    # Composition helpers are not exported
+    # "add_message",
+    # "increment_loading_counts",
+    # "increment_validation_counts",
+    # "add_processed_file",
+    # "add_failed_file",
+    # "add_skipped_file",
+    # "add_framework",
+    # "add_duplicate",
 ]

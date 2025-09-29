@@ -13,6 +13,15 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 
 ---
 
+## [0.0.8] - 2025-09-29
+
+### Added
+
+- Decorator for results messages (in `base/result_helpers.py`)
+- Added `add_format_info` to `StandardsLoadingResult`
+
+---
+
 ## [0.0.7] - 2025-09-28
 
 ### Changed

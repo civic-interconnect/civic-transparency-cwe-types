@@ -10,6 +10,7 @@ from typing import cast
 
 from ci.transparency.cwe.types.base.counts import ValidationCounts
 from ci.transparency.cwe.types.base.messages import MessageCollection
+from ci.transparency.cwe.types.base.result_helpers import with_message_methods
 
 # ------------------------------------------------------------------------------------
 # Diff structure
@@ -50,6 +51,7 @@ class SchemaDiff:
 # ------------------------------------------------------------------------------------
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class SchemaEvolutionResult:
     """Aggregate result of a schema evolution (freeze/compatibility) check."""

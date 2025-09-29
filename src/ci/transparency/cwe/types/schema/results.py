@@ -16,6 +16,7 @@ from ci.transparency.cwe.types.base.collections import (
 )
 from ci.transparency.cwe.types.base.counts import LoadingCounts, ValidationCounts
 from ci.transparency.cwe.types.base.messages import MessageCollection
+from ci.transparency.cwe.types.base.result_helpers import with_message_methods
 
 # -------------------------
 # Typed structures
@@ -45,6 +46,7 @@ type ValidationSummaryDict = dict[str, Any]
 # -------------------------
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class SchemaLoadingResult:
     """Result of loading/parsing schema documents (batch-friendly)."""
@@ -107,6 +109,7 @@ class SchemaLoadingResult:
         return schema_id in self.schemas
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class SchemaValidationResult:
     """Result of validating instances/documents against schemas."""

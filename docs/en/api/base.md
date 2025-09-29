@@ -39,7 +39,17 @@ show_signature: true
 group_by_category: true
 filters: - "!^*"
 
-## Base Schema
+## Result Helpers
+
+::: ci.transparency.cwe.types.base.result_helpers
+options:
+show*source: false
+show_signature: true
+group_by_category: true
+filters: - "!^*"
+
+
+## Schema
 
 ::: ci.transparency.cwe.types.base.schema
 options:
