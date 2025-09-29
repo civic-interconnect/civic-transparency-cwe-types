@@ -6,10 +6,13 @@ It provides:
 """
 
 from dataclasses import dataclass, field
-from typing import cast
 
 
-# Message collections
+def _empty_str_list() -> list[str]:
+    """Return an empty list of strings (for Pyright)."""
+    return []
+
+
 @dataclass(frozen=True)
 class MessageCollection:
     """Collects error, warning, and info messages.
@@ -24,9 +27,9 @@ class MessageCollection:
         list of informational messages.
     """
 
-    errors: list[str] = cast("list[str]", field(default_factory=list))
-    warnings: list[str] = cast("list[str]", field(default_factory=list))
-    infos: list[str] = cast("list[str]", field(default_factory=list))
+    errors: list[str] = field(default_factory=_empty_str_list)
+    warnings: list[str] = field(default_factory=_empty_str_list)
+    infos: list[str] = field(default_factory=_empty_str_list)
 
     @property
     def error_count(self) -> int:
@@ -59,6 +62,4 @@ class MessageCollection:
         return bool(self.warnings)
 
 
-__all__ = [
-    "MessageCollection",
-]
+__all__ = ["MessageCollection"]

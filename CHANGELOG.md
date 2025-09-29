@@ -13,6 +13,14 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 
 ---
 
+## [0.0.9] - 2025-09-29
+
+### Fixed
+
+- Decorator for results messages (in `base/result_helpers.py`) to keep lists of strings (no cast)
+
+---
+
 ## [0.0.8] - 2025-09-29
 
 ### Added
@@ -101,7 +109,9 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 - Versions are driven by git tags via `setuptools_scm`. Tag `vX.Y.Z` to release.
 - Docs are deployed per version tag and aliased to **latest**.
 
-[Unreleased]: https://github.com/civic-interconnect/civic-transparency-cwe-types/compare/v0.0.7...HEAD
+[Unreleased]: https://github.com/civic-interconnect/civic-transparency-cwe-types/compare/v0.0.9...HEAD
+[0.0.9]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.9
+[0.0.8]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.8
 [0.0.7]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.7
 [0.0.6]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.6
 [0.0.5]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.5
