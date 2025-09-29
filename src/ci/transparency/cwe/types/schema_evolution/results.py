@@ -98,6 +98,19 @@ class SchemaEvolutionResult:
         """Return the number of compatibility issues recorded in the schema evolution result."""
         return len(self.compatibility_issues)
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "SchemaEvolutionResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "SchemaEvolutionResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "SchemaEvolutionResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
 
 # ------------------------------------------------------------------------------------
 # Small composable helpers (same style as Standards/CWE)

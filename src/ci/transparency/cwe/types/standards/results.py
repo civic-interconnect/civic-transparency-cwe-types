@@ -177,6 +177,19 @@ class StandardsLoadingResult:
         self._format_breakdown[format_version] = self._format_breakdown.get(format_version, 0) + 1
         return self
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "StandardsLoadingResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "StandardsLoadingResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "StandardsLoadingResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
 
 @with_message_methods
 @dataclass(frozen=True)
@@ -253,6 +266,19 @@ class StandardsValidationResult:
         """Get validation errors for a specific standard."""
         return self.validation_details.get(standard_id, [])
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "StandardsValidationResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "StandardsValidationResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "StandardsValidationResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
 
 @with_message_methods
 @dataclass(frozen=True)
@@ -316,13 +342,26 @@ class StandardsMappingResult:
             return 1.0
         return len(self.mapping_results) / total_items
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "StandardsMappingResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "StandardsMappingResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "StandardsMappingResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
 
 # ============================================================================
 # Composition helper functions for immutable updates
 # ============================================================================
 
 
-def add_message(messages: MessageCollection, level: str, message: str) -> MessageCollection:
+def _add_message(messages: MessageCollection, level: str, message: str) -> MessageCollection:
     """Add a message to the message collection."""
     if level == "error":
         new_errors = messages.errors + [message]
@@ -338,7 +377,7 @@ def add_message(messages: MessageCollection, level: str, message: str) -> Messag
     return replace(messages, infos=new_infos)
 
 
-def increment_loading_counts(
+def _increment_loading_counts(
     counts: LoadingCounts, *, succeeded: int = 0, failed: int = 0
 ) -> LoadingCounts:
     """Increment loading counts."""
@@ -349,7 +388,7 @@ def increment_loading_counts(
     )
 
 
-def increment_validation_counts(
+def _increment_validation_counts(
     counts: ValidationCounts, *, passed: int = 0, failed: int = 0
 ) -> ValidationCounts:
     """Increment validation counts."""
@@ -358,30 +397,31 @@ def increment_validation_counts(
     )
 
 
-def add_processed_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_processed_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a processed file."""
     new_processed = files.processed_files + [file_path]
     return replace(files, processed_files=new_processed)
 
 
-def add_failed_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_failed_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a failed file."""
     new_failed = files.failed_files + [file_path]
     return replace(files, failed_files=new_failed)
 
 
-def add_skipped_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_skipped_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a skipped file."""
     new_skipped = files.skipped_files + [file_path]
     return replace(files, skipped_files=new_skipped)
 
 
-def add_framework(frameworks: FrameworkCollection, framework: str) -> FrameworkCollection:
+def _add_framework(frameworks: FrameworkCollection, framework: str) -> FrameworkCollection:
     """Add or increment a framework count."""
+    # Assuming FrameworkCollection has a public method 'add_framework'
     return frameworks.add_framework(framework)
 
 
-def add_duplicate(
+def _add_duplicate(
     duplicates: DuplicateCollection, item_id: str, file_path: Path
 ) -> DuplicateCollection:
     """Add a duplicate ID with its file path."""
@@ -407,22 +447,22 @@ def add_standard(
     # Check for duplicates
     if standard_id in result.standards:
         if file_path is not None:
-            new_duplicates = add_duplicate(result.duplicates, standard_id, file_path)
+            new_duplicates = _add_duplicate(result.duplicates, standard_id, file_path)
             result = replace(result, duplicates=new_duplicates)
 
-        new_messages = add_message(
+        new_messages = _add_message(
             result.messages, "warning", f"Duplicate standards ID found: {standard_id}"
         )
-        new_loading = increment_loading_counts(result.loading, failed=1)
+        new_loading = _increment_loading_counts(result.loading, failed=1)
         return replace(result, messages=new_messages, loading=new_loading)
 
     # Update framework statistics
     framework = str(standards_data.get("framework", "unknown"))
-    new_frameworks = add_framework(result.frameworks, framework)
+    new_frameworks = _add_framework(result.frameworks, framework)
 
     # Add the standards
     new_standards = {**result.standards, standard_id: standards_data}
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages,
         "info",
         f"Loaded standard {standard_id}: {standards_data.get('name', 'unnamed')}",
@@ -431,9 +471,9 @@ def add_standard(
     # Update file tracking if file_path provided
     new_files = result.files
     if file_path is not None:
-        new_files = add_processed_file(result.files, file_path)
+        new_files = _add_processed_file(result.files, file_path)
 
-    new_loading = increment_loading_counts(result.loading, succeeded=1)
+    new_loading = _increment_loading_counts(result.loading, succeeded=1)
 
     return replace(
         result,
@@ -449,11 +489,11 @@ def track_invalid_standards_file(
     result: StandardsLoadingResult, file_path: Path, reason: str
 ) -> StandardsLoadingResult:
     """Track an invalid standards file."""
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages, "error", f"Invalid standards file {file_path}: {reason}"
     )
-    new_files = add_failed_file(result.files, file_path)
-    new_loading = increment_loading_counts(result.loading, failed=1)
+    new_files = _add_failed_file(result.files, file_path)
+    new_loading = _increment_loading_counts(result.loading, failed=1)
     return replace(result, messages=new_messages, files=new_files, loading=new_loading)
 
 
@@ -463,10 +503,10 @@ def track_skipped_standards_file(
     reason: str,
 ) -> StandardsLoadingResult:
     """Track a skipped standards file."""
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages, "info", f"Skipped standards file {file_path}: {reason}"
     )
-    new_files = add_skipped_file(result.files, file_path)
+    new_files = _add_skipped_file(result.files, file_path)
     return replace(result, messages=new_messages, files=new_files)
 
 
@@ -514,11 +554,11 @@ def validate_standard(
 
     if errors:
         new_details[standard_id] = errors
-        new_messages = add_message(
+        new_messages = _add_message(
             new_messages, "error", f"Validation failed for {standard_id}: {len(errors)} issues"
         )
 
-    new_validation = increment_validation_counts(
+    new_validation = _increment_validation_counts(
         result.validation, passed=1 if is_valid else 0, failed=0 if is_valid else 1
     )
 
@@ -544,14 +584,14 @@ def validate_standards_field(
 
     if not is_field_valid:
         error_msg = f"Field validation failed for {standard_id}.{field_path}: {validation_rule}"
-        new_messages = add_message(result.messages, "error", error_msg)
+        new_messages = _add_message(result.messages, "error", error_msg)
         new_field_errors = result.field_errors + [f"{standard_id}.{field_path}"]
-        new_validation = increment_validation_counts(result.validation, failed=1)
+        new_validation = _increment_validation_counts(result.validation, failed=1)
         return replace(
             result, field_errors=new_field_errors, validation=new_validation, messages=new_messages
         )
 
-    new_validation = increment_validation_counts(result.validation, passed=1)
+    new_validation = _increment_validation_counts(result.validation, passed=1)
     return replace(result, validation=new_validation)
 
 
@@ -563,7 +603,7 @@ def batch_validate_standards(
     for standard_id, standards_data in standards_dict.items():
         result = validate_standard(result, standard_id, standards_data)
 
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages, "info", f"Batch validated {len(standards_dict)} standards"
     )
     return replace(result, messages=new_messages)
@@ -675,17 +715,17 @@ def analyze_mappings(
     )
 
     # Update messages
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages, "info", f"Analyzed mappings for {len(standards_dict)} standards"
     )
     if invalid_mappings:
-        new_messages = add_message(
+        new_messages = _add_message(
             new_messages,
             "error",
             f"Found {len(invalid_mappings)} invalid mapping references",
         )
 
-    new_validation = increment_validation_counts(
+    new_validation = _increment_validation_counts(
         result.validation,
         passed=len(standards_dict) - len(invalid_mappings),
         failed=len(invalid_mappings),
@@ -824,13 +864,4 @@ __all__ = [
     "get_standards_loading_summary",
     "get_standards_validation_summary",
     "get_mapping_summary",
-    # Composition helpers are not exported
-    # "add_message",
-    # "increment_loading_counts",
-    # "increment_validation_counts",
-    # "add_processed_file",
-    # "add_failed_file",
-    # "add_skipped_file",
-    # "add_framework",
-    # "add_duplicate",
 ]

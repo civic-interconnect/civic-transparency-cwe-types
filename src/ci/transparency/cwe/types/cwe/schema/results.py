@@ -26,6 +26,7 @@ from ci.transparency.cwe.types.base.collections import (
 )
 from ci.transparency.cwe.types.base.counts import LoadingCounts, ValidationCounts
 from ci.transparency.cwe.types.base.messages import MessageCollection
+from ci.transparency.cwe.types.base.result_helpers import with_message_methods
 from ci.transparency.cwe.types.base.schema import SchemaCollection
 
 # ============================================================================
@@ -51,6 +52,7 @@ type ValidationSummaryDict = dict[str, Any]
 # ============================================================================
 
 
+@with_message_methods
 @dataclass(frozen=True)
 class CweSchemaLoadingResult:
     """Result of loading/parsing CWE schemas using composition.
@@ -113,7 +115,21 @@ class CweSchemaLoadingResult:
         """Check if a schema ID was loaded."""
         return schema_id in self.schemas
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "CweSchemaLoadingResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
 
+    def add_warning(self, msg: str) -> "CweSchemaLoadingResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "CweSchemaLoadingResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
+
+@with_message_methods
 @dataclass(frozen=True)
 class CweSchemaValidationResult:
     """Result of validating CWE data against a schema using composition.
@@ -169,13 +185,26 @@ class CweSchemaValidationResult:
             return f"field: {self.field_path}"
         return "unknown target"
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "CweSchemaValidationResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "CweSchemaValidationResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "CweSchemaValidationResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
 
 # ============================================================================
 # Composition helper functions for immutable updates
 # ============================================================================
 
 
-def add_message(messages: MessageCollection, level: str, message: str) -> MessageCollection:
+def _add_message(messages: MessageCollection, level: str, message: str) -> MessageCollection:
     """Add a message to the message collection."""
     if level == "error":
         new_errors = messages.errors + [message]
@@ -191,7 +220,7 @@ def add_message(messages: MessageCollection, level: str, message: str) -> Messag
     return replace(messages, infos=new_infos)
 
 
-def increment_loading_counts(
+def _increment_loading_counts(
     counts: LoadingCounts, *, succeeded: int = 0, failed: int = 0
 ) -> LoadingCounts:
     """Increment loading counts."""
@@ -202,7 +231,7 @@ def increment_loading_counts(
     )
 
 
-def increment_validation_counts(
+def _increment_validation_counts(
     counts: ValidationCounts, *, passed: int = 0, failed: int = 0
 ) -> ValidationCounts:
     """Increment validation counts."""
@@ -211,30 +240,30 @@ def increment_validation_counts(
     )
 
 
-def add_processed_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_processed_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a processed file."""
     new_processed = files.processed_files + [file_path]
     return replace(files, processed_files=new_processed)
 
 
-def add_failed_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_failed_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a failed file."""
     new_failed = files.failed_files + [file_path]
     return replace(files, failed_files=new_failed)
 
 
-def add_skipped_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_skipped_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a skipped file."""
     new_skipped = files.skipped_files + [file_path]
     return replace(files, skipped_files=new_skipped)
 
 
-def add_file_type(schema_metadata: SchemaCollection, file_type: str) -> SchemaCollection:
+def _add_file_type(schema_metadata: SchemaCollection, file_type: str) -> SchemaCollection:
     """Add or increment a file type count."""
     return schema_metadata.add_file_type(file_type)
 
 
-def add_duplicate(
+def _add_duplicate(
     duplicates: DuplicateCollection, item_id: str, file_path: Path
 ) -> DuplicateCollection:
     """Add a duplicate ID with its file path."""
@@ -260,18 +289,18 @@ def add_cwe_schema(
     # Check for duplicates
     if schema_id in result.schemas:
         if file_path is not None:
-            new_duplicates = add_duplicate(result.duplicates, schema_id, file_path)
+            new_duplicates = _add_duplicate(result.duplicates, schema_id, file_path)
             result = replace(result, duplicates=new_duplicates)
 
-        new_messages = add_message(
+        new_messages = _add_message(
             result.messages, "warning", f"Duplicate schema ID found: {schema_id}"
         )
-        new_loading = increment_loading_counts(result.loading, failed=1)
+        new_loading = _increment_loading_counts(result.loading, failed=1)
         return replace(result, messages=new_messages, loading=new_loading)
 
     # Add the schema
     new_schemas = {**result.schemas, schema_id: schema_data}
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages,
         "info",
         f"Loaded schema {schema_id}: {schema_data.get('schema_name', 'unnamed')}",
@@ -281,12 +310,12 @@ def add_cwe_schema(
     new_files = result.files
     new_schema_metadata = result.schema_metadata
     if file_path is not None:
-        new_files = add_processed_file(result.files, file_path)
+        new_files = _add_processed_file(result.files, file_path)
         # Extract and track file type
         file_type = file_path.suffix.lower() if file_path.suffix else "unknown"
-        new_schema_metadata = add_file_type(result.schema_metadata, file_type)
+        new_schema_metadata = _add_file_type(result.schema_metadata, file_type)
 
-    new_loading = increment_loading_counts(result.loading, succeeded=1)
+    new_loading = _increment_loading_counts(result.loading, succeeded=1)
 
     return replace(
         result,
@@ -302,11 +331,11 @@ def track_invalid_schema_file(
     result: CweSchemaLoadingResult, file_path: Path, reason: str
 ) -> CweSchemaLoadingResult:
     """Track an invalid CWE schema file."""
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages, "error", f"Invalid schema file {file_path}: {reason}"
     )
-    new_files = add_failed_file(result.files, file_path)
-    new_loading = increment_loading_counts(result.loading, failed=1)
+    new_files = _add_failed_file(result.files, file_path)
+    new_loading = _increment_loading_counts(result.loading, failed=1)
     return replace(result, messages=new_messages, files=new_files, loading=new_loading)
 
 
@@ -316,10 +345,10 @@ def track_skipped_schema_file(
     reason: str,
 ) -> CweSchemaLoadingResult:
     """Track a skipped CWE schema file."""
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages, "info", f"Skipped schema file {file_path}: {reason}"
     )
-    new_files = add_skipped_file(result.files, file_path)
+    new_files = _add_skipped_file(result.files, file_path)
     return replace(result, messages=new_messages, files=new_files)
 
 
@@ -348,11 +377,11 @@ def create_successful_validation(
 ) -> CweSchemaValidationResult:
     """Create a successful validation result."""
     schema_metadata = SchemaCollection().with_metadata(schema_name, schema_version)
-    validation = increment_validation_counts(ValidationCounts(), passed=1)
+    validation = _increment_validation_counts(ValidationCounts(), passed=1)
 
     messages = MessageCollection()
     if info_message:
-        messages = add_message(messages, "info", info_message)
+        messages = _add_message(messages, "info", info_message)
 
     return CweSchemaValidationResult(
         validation=validation,
@@ -375,15 +404,15 @@ def create_failed_validation(
 ) -> CweSchemaValidationResult:
     """Create a failed validation result."""
     schema_metadata = SchemaCollection().with_metadata(schema_name, schema_version)
-    validation = increment_validation_counts(ValidationCounts(), failed=1)
+    validation = _increment_validation_counts(ValidationCounts(), failed=1)
 
     messages = MessageCollection()
     if error_messages:
         for error in error_messages:
-            messages = add_message(messages, "error", error)
+            messages = _add_message(messages, "error", error)
     if warning_messages:
         for warning in warning_messages:
-            messages = add_message(messages, "warning", warning)
+            messages = _add_message(messages, "warning", warning)
 
     return CweSchemaValidationResult(
         validation=validation,
@@ -400,8 +429,8 @@ def add_validation_error(
     error_message: str,
 ) -> CweSchemaValidationResult:
     """Add an error to the validation result."""
-    new_messages = add_message(result.messages, "error", error_message)
-    new_validation = increment_validation_counts(result.validation, failed=1)
+    new_messages = _add_message(result.messages, "error", error_message)
+    new_validation = _increment_validation_counts(result.validation, failed=1)
     return replace(
         result,
         messages=new_messages,
@@ -415,7 +444,7 @@ def add_validation_warning(
     warning_message: str,
 ) -> CweSchemaValidationResult:
     """Add a warning to the validation result."""
-    new_messages = add_message(result.messages, "warning", warning_message)
+    new_messages = _add_message(result.messages, "warning", warning_message)
     return replace(result, messages=new_messages)
 
 
@@ -494,13 +523,4 @@ __all__ = [
     # Summary functions
     "get_cwe_schema_loading_summary",
     "get_cwe_schema_validation_summary",
-    # Composition helpers
-    "add_message",
-    "increment_loading_counts",
-    "increment_validation_counts",
-    "add_processed_file",
-    "add_failed_file",
-    "add_skipped_file",
-    "add_file_type",
-    "add_duplicate",
 ]

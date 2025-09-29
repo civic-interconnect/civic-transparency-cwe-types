@@ -108,6 +108,19 @@ class SchemaLoadingResult:
         """
         return schema_id in self.schemas
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "SchemaLoadingResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "SchemaLoadingResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "SchemaLoadingResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
 
 @with_message_methods
 @dataclass(frozen=True)
@@ -174,6 +187,19 @@ class SchemaValidationResult:
             List of schema IDs where validation passed.
         """
         return [sid for sid, ok in self.validation_results.items() if ok]
+
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "SchemaValidationResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "SchemaValidationResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "SchemaValidationResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
 
 
 # -------------------------

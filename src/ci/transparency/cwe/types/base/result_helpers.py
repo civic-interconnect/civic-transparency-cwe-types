@@ -64,4 +64,7 @@ def with_message_methods[T: HasMessages](cls: type[T]) -> type[T]:
     return cls
 
 
-__all__ = ["with_message_methods", "HasMessages"]
+__all__ = [
+    "HasMessages",
+    "with_message_methods",
+]

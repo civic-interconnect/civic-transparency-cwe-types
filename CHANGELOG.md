@@ -13,6 +13,22 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 
 ---
 
+## [0.0.10] - 2025-09-29
+
+### Added
+- More tests for CWE result operations
+- Automated validation for `@with_message_methods` decorator compliance
+- Automated validation for `__all__` export completeness
+
+### Fixed
+- Message decorator in `base/result_helpers.py` to properly handle string lists
+- Missing type exports: `CweRelationshipLike`, `RelationshipType`
+- Sorted `__all__` exports alphabetically where no grouping comments exist
+
+### Changed
+- Test coverage increased to 85%
+---
+
 ## [0.0.9] - 2025-09-29
 
 ### Fixed
@@ -109,7 +125,8 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 - Versions are driven by git tags via `setuptools_scm`. Tag `vX.Y.Z` to release.
 - Docs are deployed per version tag and aliased to **latest**.
 
-[Unreleased]: https://github.com/civic-interconnect/civic-transparency-cwe-types/compare/v0.0.9...HEAD
+[Unreleased]: https://github.com/civic-interconnect/civic-transparency-cwe-types/compare/v0.0.10...HEAD
+[0.0.10]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.10
 [0.0.9]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.9
 [0.0.8]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.8
 [0.0.7]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.7

@@ -207,8 +207,8 @@ class SchemaBreakingChangeError(SchemaFreezeError):
 
 
 __all__ = [
+    "SchemaBreakingChangeError",
+    "SchemaCompatibilityError",
     "SchemaFreezeError",
     "SchemaFreezeViolationError",
-    "SchemaCompatibilityError",
-    "SchemaBreakingChangeError",
 ]

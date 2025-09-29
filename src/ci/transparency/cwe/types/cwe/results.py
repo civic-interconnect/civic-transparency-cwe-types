@@ -144,6 +144,19 @@ class CweLoadingResult:
             )
         }
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "CweLoadingResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "CweLoadingResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "CweLoadingResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
 
 @with_message_methods
 @dataclass(frozen=True)
@@ -237,6 +250,19 @@ class CweValidationResult:
             "most_common_errors": self.get_most_common_errors(),
             "severity_distribution": dict(self.severity_counts),
         }
+
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "CweValidationResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "CweValidationResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "CweValidationResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
 
 
 @with_message_methods
@@ -341,13 +367,26 @@ class CweRelationshipResult:
             ),
         }
 
+    # Type hints for decorator-added methods (overridden at runtime)
+    def add_error(self, msg: str) -> "CweRelationshipResult":
+        """Add error message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_warning(self, msg: str) -> "CweRelationshipResult":
+        """Add warning message (added by decorator)."""
+        ...  # Overridden by decorator
+
+    def add_info(self, msg: str) -> "CweRelationshipResult":
+        """Add info message (added by decorator)."""
+        ...  # Overridden by decorator
+
 
 # ============================================================================
 # Composition helper functions for immutable updates
 # ============================================================================
 
 
-def add_message(messages: MessageCollection, level: str, message: str) -> MessageCollection:
+def _add_message(messages: MessageCollection, level: str, message: str) -> MessageCollection:
     """Add a message to the message collection."""
     if level == "error":
         new_errors = messages.errors + [message]
@@ -363,7 +402,7 @@ def add_message(messages: MessageCollection, level: str, message: str) -> Messag
     return replace(messages, infos=new_infos)
 
 
-def increment_loading_counts(
+def _increment_loading_counts(
     counts: LoadingCounts, *, succeeded: int = 0, failed: int = 0
 ) -> LoadingCounts:
     """Increment loading counts."""
@@ -374,7 +413,7 @@ def increment_loading_counts(
     )
 
 
-def increment_validation_counts(
+def _increment_validation_counts(
     counts: ValidationCounts, *, passed: int = 0, failed: int = 0
 ) -> ValidationCounts:
     """Increment validation counts."""
@@ -383,32 +422,32 @@ def increment_validation_counts(
     )
 
 
-def add_processed_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_processed_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a processed file."""
     new_processed = files.processed_files + [file_path]
     return replace(files, processed_files=new_processed)
 
 
-def add_failed_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_failed_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a failed file."""
     new_failed = files.failed_files + [file_path]
     return replace(files, failed_files=new_failed)
 
 
-def add_skipped_file(files: FileCollection, file_path: Path) -> FileCollection:
+def _add_skipped_file(files: FileCollection, file_path: Path) -> FileCollection:
     """Add a skipped file."""
     new_skipped = files.skipped_files + [file_path]
     return replace(files, skipped_files=new_skipped)
 
 
-def add_category(categories: CategoryCollection, category: str) -> CategoryCollection:
+def _add_category(categories: CategoryCollection, category: str) -> CategoryCollection:
     """Add or increment a category count."""
     new_stats = {**categories.category_stats}
     new_stats[category] = new_stats.get(category, 0) + 1
     return replace(categories, category_stats=new_stats)
 
 
-def add_duplicate(
+def _add_duplicate(
     duplicates: DuplicateCollection, item_id: str, file_path: Path
 ) -> DuplicateCollection:
     """Add a duplicate ID with its file path."""
@@ -434,29 +473,29 @@ def add_cwe(
     # Check for duplicates
     if cwe_id in result.cwes:
         if file_path is not None:
-            new_duplicates = add_duplicate(result.duplicates, cwe_id, file_path)
+            new_duplicates = _add_duplicate(result.duplicates, cwe_id, file_path)
             result = replace(result, duplicates=new_duplicates)
 
-        new_messages = add_message(result.messages, "warning", f"Duplicate CWE ID found: {cwe_id}")
-        new_loading = increment_loading_counts(result.loading, failed=1)
+        new_messages = _add_message(result.messages, "warning", f"Duplicate CWE ID found: {cwe_id}")
+        new_loading = _increment_loading_counts(result.loading, failed=1)
         return replace(result, messages=new_messages, loading=new_loading)
 
     # Update category statistics
     category = str(cwe_data.get("category", "unknown"))
-    new_categories = add_category(result.categories, category)
+    new_categories = _add_category(result.categories, category)
 
     # Add the CWE
     new_cwes = {**result.cwes, cwe_id: cwe_data}
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages, "info", f"Loaded CWE {cwe_id}: {cwe_data.get('name', 'unnamed')}"
     )
 
     # Update file tracking if file_path provided
     new_files = result.files
     if file_path is not None:
-        new_files = add_processed_file(result.files, file_path)
+        new_files = _add_processed_file(result.files, file_path)
 
-    new_loading = increment_loading_counts(result.loading, succeeded=1)
+    new_loading = _increment_loading_counts(result.loading, succeeded=1)
 
     return replace(
         result,
@@ -470,9 +509,9 @@ def add_cwe(
 
 def track_invalid_file(result: CweLoadingResult, file_path: Path, reason: str) -> CweLoadingResult:
     """Track an invalid CWE file."""
-    new_messages = add_message(result.messages, "error", f"Invalid CWE file {file_path}: {reason}")
-    new_files = add_failed_file(result.files, file_path)
-    new_loading = increment_loading_counts(result.loading, failed=1)
+    new_messages = _add_message(result.messages, "error", f"Invalid CWE file {file_path}: {reason}")
+    new_files = _add_failed_file(result.files, file_path)
+    new_loading = _increment_loading_counts(result.loading, failed=1)
     return replace(result, messages=new_messages, files=new_files, loading=new_loading)
 
 
@@ -482,8 +521,8 @@ def track_skipped_cwe_file(
     reason: str,
 ) -> CweLoadingResult:
     """Track a skipped CWE file."""
-    new_messages = add_message(result.messages, "info", f"Skipped CWE file {file_path}: {reason}")
-    new_files = add_skipped_file(result.files, file_path)
+    new_messages = _add_message(result.messages, "info", f"Skipped CWE file {file_path}: {reason}")
+    new_files = _add_skipped_file(result.files, file_path)
     return replace(result, messages=new_messages, files=new_files)
 
 
@@ -515,11 +554,11 @@ def validate_cwe(
     if errors:
         new_details[cwe_id] = errors
         new_severity_counts[severity] = new_severity_counts.get(severity, 0) + 1
-        new_messages = add_message(
+        new_messages = _add_message(
             new_messages, "error", f"Validation failed for {cwe_id}: {len(errors)} issues"
         )
 
-    new_validation = increment_validation_counts(
+    new_validation = _increment_validation_counts(
         result.validation, passed=1 if is_valid else 0, failed=0 if is_valid else 1
     )
 
@@ -560,14 +599,14 @@ def validate_cwe_field(
         full_error_msg = (
             f"Field validation failed for {cwe_id}.{field_path}: {error_msg} ({validation_rule})"
         )
-        new_messages = add_message(result.messages, "error", full_error_msg)
+        new_messages = _add_message(result.messages, "error", full_error_msg)
         new_field_errors = result.field_errors + [f"{cwe_id}.{field_path}"]
-        new_validation = increment_validation_counts(result.validation, failed=1)
+        new_validation = _increment_validation_counts(result.validation, failed=1)
         return replace(
             result, field_errors=new_field_errors, validation=new_validation, messages=new_messages
         )
 
-    new_validation = increment_validation_counts(result.validation, passed=1)
+    new_validation = _increment_validation_counts(result.validation, passed=1)
     return replace(result, validation=new_validation)
 
 
@@ -579,7 +618,7 @@ def batch_validate_cwes(
     for cwe_id, cwe_data in cwe_dict.items():
         result = validate_cwe(result, cwe_id, cwe_data)
 
-    new_messages = add_message(result.messages, "info", f"Batch validated {len(cwe_dict)} CWEs")
+    new_messages = _add_message(result.messages, "info", f"Batch validated {len(cwe_dict)} CWEs")
     return replace(result, messages=new_messages)
 
 
@@ -660,21 +699,21 @@ def analyze_relationships(
         relationship_depths[cid] = _calculate_relationship_depth(relationship_map, cid, set())
 
     # Update messages
-    new_messages = add_message(
+    new_messages = _add_message(
         result.messages, "info", f"Analyzed relationships for {len(cwe_dict)} CWEs"
     )
     if circular_deps:
-        new_messages = add_message(
+        new_messages = _add_message(
             new_messages, "warning", f"Found {len(circular_deps)} CWEs in circular dependencies"
         )
     if invalid_references:
-        new_messages = add_message(
+        new_messages = _add_message(
             new_messages,
             "error",
             f"Found {len(invalid_references)} invalid relationship references",
         )
 
-    new_validation = increment_validation_counts(
+    new_validation = _increment_validation_counts(
         result.validation,
         passed=len(cwe_dict) - len(invalid_references),
         failed=len(invalid_references),
@@ -967,6 +1006,7 @@ __all__ = [
     "CweValidationResult",
     "CweRelationshipResult",
     "CweRelationshipDict",
+    "CweRelationshipLike",
     "CweDataDict",
     "CweItemDict",
     "ValidationResultsDict",
@@ -977,6 +1017,7 @@ __all__ = [
     "ValidationSummaryDict",
     "RelationshipStatisticsDict",
     "RelationshipSummaryDict",
+    "RelationshipType",
     # Loading operations
     "add_cwe",
     "track_invalid_file",
@@ -991,13 +1032,4 @@ __all__ = [
     "get_cwe_loading_summary",
     "get_cwe_validation_summary",
     "get_relationship_summary",
-    # Composition helpers
-    "add_message",
-    "increment_loading_counts",
-    "increment_validation_counts",
-    "add_processed_file",
-    "add_failed_file",
-    "add_skipped_file",
-    "add_category",
-    "add_duplicate",
 ]
