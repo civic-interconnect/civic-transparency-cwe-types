@@ -16,7 +16,7 @@ def verify_types():
         return False
 
     # Count Python files (excluding __init__.py and __pycache__)
-    python_files = list(types_dir.glob("*.py"))
+    python_files = list(types_dir.rglob("*.py"))
     python_files = [f for f in python_files if not f.name.startswith("__")]
 
     print(f"Found {len(python_files)} type files in {types_dir}")
