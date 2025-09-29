@@ -5,6 +5,7 @@ exclude: |
     dist/|
     build/|
     htmlcov/|
+    site/|
     .*\.egg-info/
   )
 repos:
