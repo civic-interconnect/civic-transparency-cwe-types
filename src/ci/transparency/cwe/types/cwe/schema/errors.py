@@ -1,189 +1,224 @@
-"""CWE schema error types with rich schema context.
+"""CWE schema error types using enhanced base classes.
 
-Domain-specific error hierarchy for CWE schema operations. Extends base error
-types to provide CWE schema-specific context like schema names, versions,
-validation paths.
+Domain-specific error hierarchy for CWE schema operations. Each error inherits
+from exactly one enhanced base error class and leverages the flexible context
+system for schema-specific information.
 
 Design principles:
-    - Inherits consistent formatting from base error types
-    - Adds CWE schema-specific context (schema names, versions, field paths)
-    - Provides specific exception types for different schema failure scenarios
-    - Maintains minimal memory overhead with __slots__
+    - Single inheritance: each error extends exactly one base error class
+    - Context-rich: uses the flexible context system for schema details
+    - Consistent: maintains uniform error formatting across all errors
+    - Minimal: leverages base class functionality rather than duplicating code
 
-Core CWE schema errors:
-    - CweSchemaError: Base CWE schema error with schema context
-    - CweSchemaLoadingError: CWE schema loading/parsing failures
-    - CweSchemaValidationError: CWE data validation against schema failures
+Usage patterns:
+    - File operations → FileError, LoadingError, ParsingError
+    - Validation operations → ValidationError
+    - General schema operations → BaseTransparencyError
 
 Typical usage:
     from ci.transparency.cwe.types.cwe.schema import CweSchemaValidationError
 
-    try:
-        validate_cwe_against_schema(cwe_data, schema)
-    except CweSchemaValidationError as e:
-        # Example: "Validation failed | Schema: cwe-v2.0 | Field: relationships[0].id"
-        logger.error(f"CWE schema error: {e}")
+    raise CweSchemaValidationError(
+        "Schema validation failed",
+        schema_name="cwe-v2.0",
+        field_path="relationships[0].id",
+        file_path="cwe-79.yaml"
+    )
+    # Output: "Schema validation failed | Schema: cwe-v2.0 | Field: relationships[0].id | File: cwe-79.yaml"
 """
 
 from pathlib import Path
+from typing import Any
 
-from ci.transparency.cwe.types.base.errors import BaseLoadingError
-
-
-class CweSchemaError(BaseLoadingError):
-    """Base exception for CWE schema operations.
-
-    Extends BaseLoadingError to add CWE schema-specific context like
-    schema names and versions.
-    """
-
-    __slots__ = ("schema_name", "schema_version")
-
-    def __init__(
-        self,
-        message: str,
-        schema_name: str | None = None,
-        schema_version: str | None = None,
-        file_path: Path | None = None,
-    ):
-        """Initialize CWE schema error.
-
-        Args:
-            message: The error message.
-            schema_name: Optional name of the schema.
-            schema_version: Optional version of the schema.
-            file_path: Optional file system path where the error occurred.
-        """
-        super().__init__(message, file_path)
-        self.schema_name = schema_name
-        self.schema_version = schema_version
-
-    def get_context_parts(self) -> list[str]:
-        """Add CWE schema context to error message."""
-        parts = super().get_context_parts()
-
-        if self.schema_name:
-            if self.schema_version:
-                parts.insert(0, f"Schema: {self.schema_name}-{self.schema_version}")
-            else:
-                parts.insert(0, f"Schema: {self.schema_name}")
-        elif self.schema_version:
-            parts.insert(0, f"Version: {self.schema_version}")
-
-        return parts
-
+from ci.transparency.cwe.types.base.errors import (
+    BaseTransparencyError,
+    FileError,
+    LoadingError,
+    ParsingError,
+    ValidationError,
+)
 
 # ============================================================================
-# CWE schema loading error types
+# CWE schema loading error types (file-based operations)
 # ============================================================================
 
 
-class CweSchemaLoadingError(CweSchemaError):
+class CweSchemaLoadingError(LoadingError):
     """CWE schema loading operation failed."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        schema_name: str | None = None,
+        schema_version: str | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize CWE schema loading error.
 
-class CweSchemaFormatError(CweSchemaLoadingError):
-    """CWE schema format is invalid or malformed."""
+        Args:
+            message: The error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            file_path: Optional file path where the error occurred
+            **kwargs: Additional context passed to base class
+        """
+        # Combine schema name and version for the schema_name context
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
 
-    __slots__ = ("format_issue",)
+        super().__init__(
+            message,
+            file_path=file_path,
+            schema_name=combined_schema,
+            **kwargs,
+        )
+
+
+class CweSchemaNotFoundError(LoadingError):
+    """CWE schema file could not be found."""
 
     def __init__(
         self,
         message: str,
-        format_issue: str | None = None,
+        *,
         schema_name: str | None = None,
         schema_version: str | None = None,
-        file_path: Path | None = None,
-    ):
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize CWE schema not found error."""
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
+
+        super().__init__(
+            message,
+            file_path=file_path,
+            schema_name=combined_schema,
+            **kwargs,
+        )
+
+
+class CweSchemaParsingError(ParsingError):
+    """CWE schema file could not be parsed as valid JSON/YAML."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        schema_name: str | None = None,
+        schema_version: str | None = None,
+        parser_type: str | None = None,
+        parse_details: str | None = None,
+        line_number: int | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize CWE schema parsing error."""
+        # Combine schema name and version for schema context
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
+
+        # Let base ParsingError handle parser context building
+        super().__init__(
+            message,
+            file_path=file_path,
+            parser_type=parser_type,
+            line_number=line_number,
+            parse_details=parse_details,
+            schema_name=combined_schema,  # Schema-specific context
+            **kwargs,
+        )
+
+
+class CweSchemaFormatError(FileError):
+    """CWE schema format is invalid or malformed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        schema_name: str | None = None,
+        schema_version: str | None = None,
+        format_issue: str | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE schema format error.
 
         Args:
-            message: The format error message.
-            format_issue: Optional description of the format issue.
-            schema_name: Optional name of the schema.
-            schema_version: Optional version of the schema.
-            file_path: Optional file system path with the format issue.
+            message: The format error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            format_issue: Optional description of the format issue
+            file_path: Optional file path with the format issue
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, schema_name, schema_version, file_path)
-        self.format_issue = format_issue
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
 
-    def get_context_parts(self) -> list[str]:
-        """Add format issue details to context."""
-        parts = super().get_context_parts()
-        if self.format_issue:
-            parts.append(f"Issue: {self.format_issue}")
-        return parts
-
-
-class CweSchemaNotFoundError(CweSchemaLoadingError):
-    """CWE schema file could not be found."""
-
-
-class CweSchemaParsingError(CweSchemaLoadingError):
-    """CWE schema file could not be parsed as valid JSON."""
-
-    __slots__ = ("parse_error",)
-
-    def __init__(
-        self,
-        message: str,
-        parse_error: str | None = None,
-        schema_name: str | None = None,
-        schema_version: str | None = None,
-        file_path: Path | None = None,
-    ):
-        """Initialize CWE schema parsing error.
-
-        Args:
-            message: The parsing error message.
-            parse_error: Optional details of the parsing error.
-            schema_name: Optional name of the schema.
-            schema_version: Optional version of the schema.
-            file_path: Optional file system path that failed to parse.
-        """
-        super().__init__(message, schema_name, schema_version, file_path)
-        self.parse_error = parse_error
-
-    def get_context_parts(self) -> list[str]:
-        """Add parsing error details to context."""
-        parts = super().get_context_parts()
-        if self.parse_error:
-            parts.append(f"Parse Error: {self.parse_error}")
-        return parts
+        super().__init__(
+            message,
+            file_path=file_path,
+            schema_name=combined_schema,
+            validation_context=f"Issue: {format_issue}" if format_issue else None,
+            **kwargs,
+        )
 
 
-class CweSchemaVersionError(CweSchemaLoadingError):
+class CweSchemaVersionError(FileError):
     """CWE schema version is not supported or invalid."""
 
-    __slots__ = ("supported_versions",)
-
     def __init__(
         self,
         message: str,
+        *,
+        schema_name: str | None = None,
         schema_version: str | None = None,
         supported_versions: list[str] | None = None,
-        schema_name: str | None = None,
-        file_path: Path | None = None,
-    ):
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE schema version error.
 
         Args:
-            message: The version error message.
-            schema_version: Optional version that was found.
-            supported_versions: Optional list of supported versions.
-            schema_name: Optional name of the schema.
-            file_path: Optional file system path with the version issue.
+            message: The version error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version that was found
+            supported_versions: Optional list of supported versions
+            file_path: Optional file path with the version issue
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, schema_name, schema_version, file_path)
-        self.supported_versions = supported_versions or []
+        # Use error_code for version info
+        error_code: str | None = schema_version
 
-    def get_context_parts(self) -> list[str]:
-        """Add supported versions to context."""
-        parts = super().get_context_parts()
-        if self.supported_versions:
-            supported = ", ".join(self.supported_versions)
-            parts.append(f"Supported: {supported}")
-        return parts
+        # Build validation context with supported versions
+        validation_context: str | None = None
+        if supported_versions:
+            supported: str = ", ".join(supported_versions)
+            validation_context = f"Supported: {supported}"
+
+        super().__init__(
+            message,
+            file_path=file_path,
+            schema_name=schema_name,
+            error_code=error_code,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
 # ============================================================================
@@ -191,223 +226,319 @@ class CweSchemaVersionError(CweSchemaLoadingError):
 # ============================================================================
 
 
-class CweSchemaValidationError(CweSchemaError):
+class CweSchemaValidationError(ValidationError):
     """Base CWE schema validation error."""
-
-
-class CweSchemaConstraintError(CweSchemaValidationError):
-    """CWE schema constraint validation failed."""
-
-    __slots__ = ("constraint_name", "constraint_value", "violated_rule")
 
     def __init__(
         self,
         message: str,
+        *,
+        schema_name: str | None = None,
+        schema_version: str | None = None,
+        field_path: str | None = None,
+        validation_rule: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize CWE schema validation error.
+
+        Args:
+            message: The validation error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            field_path: Optional path to the field that failed
+            validation_rule: Optional validation rule that failed
+            **kwargs: Additional context passed to base class
+        """
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
+
+        super().__init__(
+            message,
+            schema_name=combined_schema,
+            field_path=field_path,
+            validation_rule=validation_rule,
+            **kwargs,
+        )
+
+
+class CweSchemaConstraintError(ValidationError):
+    """CWE schema constraint validation failed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        schema_name: str | None = None,
+        schema_version: str | None = None,
         constraint_name: str | None = None,
         constraint_value: str | None = None,
         violated_rule: str | None = None,
-        schema_name: str | None = None,
-        schema_version: str | None = None,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE schema constraint error.
 
         Args:
-            message: The constraint error message.
-            constraint_name: Optional name of the constraint.
-            constraint_value: Optional expected constraint value.
-            violated_rule: Optional description of the violated rule.
-            schema_name: Optional name of the schema.
-            schema_version: Optional version of the schema.
+            message: The constraint error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            constraint_name: Optional name of the constraint
+            constraint_value: Optional expected constraint value
+            violated_rule: Optional description of the violated rule
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, schema_name, schema_version)
-        self.constraint_name = constraint_name
-        self.constraint_value = constraint_value
-        self.violated_rule = violated_rule
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
 
-    def get_context_parts(self) -> list[str]:
-        """Add constraint details to context."""
-        parts = super().get_context_parts()
+        # Build validation context with constraint details
+        context_parts: list[str] = []
+        if constraint_name:
+            context_parts.append(f"Constraint: {constraint_name}")
+        if constraint_value:
+            context_parts.append(f"Expected: {constraint_value}")
+        if violated_rule:
+            context_parts.append(f"Rule: {violated_rule}")
 
-        if self.constraint_name:
-            parts.append(f"Constraint: {self.constraint_name}")
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.constraint_value:
-            parts.append(f"Expected: {self.constraint_value}")
-
-        if self.violated_rule:
-            parts.append(f"Rule: {self.violated_rule}")
-
-        return parts
+        super().__init__(
+            message,
+            schema_name=combined_schema,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
-class CweSchemaDataValidationError(CweSchemaValidationError):
+class CweSchemaDataValidationError(ValidationError):
     """CWE data validation against schema failed."""
-
-    __slots__ = ("validation_path", "expected_type", "actual_value")
 
     def __init__(
         self,
         message: str,
+        *,
+        schema_name: str | None = None,
+        schema_version: str | None = None,
         validation_path: str | None = None,
         expected_type: str | None = None,
         actual_value: str | None = None,
-        schema_name: str | None = None,
-        schema_version: str | None = None,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE data validation error.
 
         Args:
-            message: The validation error message.
-            validation_path: Optional path to the field that failed validation.
-            expected_type: Optional expected type or format.
-            actual_value: Optional actual value that failed validation.
-            schema_name: Optional name of the schema.
-            schema_version: Optional version of the schema.
+            message: The validation error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            validation_path: Optional path to the field that failed validation
+            expected_type: Optional expected type or format
+            actual_value: Optional actual value that failed validation
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, schema_name, schema_version)
-        self.validation_path = validation_path
-        self.expected_type = expected_type
-        self.actual_value = actual_value
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
 
-    def get_context_parts(self) -> list[str]:
-        """Add validation details to context."""
-        parts = super().get_context_parts()
+        # Build validation context with type/value details
+        context_parts: list[str] = []
+        if expected_type:
+            context_parts.append(f"Expected: {expected_type}")
+        if actual_value:
+            context_parts.append(f"Actual: {actual_value}")
 
-        if self.validation_path:
-            parts.append(f"Field: {self.validation_path}")
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.expected_type:
-            parts.append(f"Expected: {self.expected_type}")
+        super().__init__(
+            message,
+            schema_name=combined_schema,
+            field_path=validation_path,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
-        if self.actual_value:
-            parts.append(f"Actual: {self.actual_value}")
 
-        return parts
-
-
-class CweSchemaFieldValidationError(CweSchemaValidationError):
+class CweSchemaFieldValidationError(ValidationError):
     """CWE field-level validation against schema failed."""
-
-    __slots__ = ("field_name", "field_path", "constraint_type")
 
     def __init__(
         self,
         message: str,
+        *,
+        schema_name: str | None = None,
+        schema_version: str | None = None,
         field_name: str | None = None,
         field_path: str | None = None,
         constraint_type: str | None = None,
-        schema_name: str | None = None,
-        schema_version: str | None = None,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE field validation error.
 
         Args:
-            message: The field validation error message.
-            field_name: Optional name of the field.
-            field_path: Optional full path to the field (e.g., "relationships[0].id").
-            constraint_type: Optional type of constraint that failed (e.g., "required", "pattern").
-            schema_name: Optional name of the schema.
-            schema_version: Optional version of the schema.
+            message: The field validation error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            field_name: Optional name of the field
+            field_path: Optional full path to the field (e.g., "relationships[0].id")
+            constraint_type: Optional type of constraint that failed
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, schema_name, schema_version)
-        self.field_name = field_name
-        self.field_path = field_path
-        self.constraint_type = constraint_type
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
 
-    def get_context_parts(self) -> list[str]:
-        """Add field validation details to context."""
-        parts = super().get_context_parts()
+        # Use field_path if available, otherwise field_name
+        final_field_path: str | None = field_path or field_name
 
-        if self.field_path:
-            parts.append(f"Field: {self.field_path}")
-        elif self.field_name:
-            parts.append(f"Field: {self.field_name}")
-
-        if self.constraint_type:
-            parts.append(f"Constraint: {self.constraint_type}")
-
-        return parts
+        super().__init__(
+            message,
+            schema_name=combined_schema,
+            field_path=final_field_path,
+            validation_rule=constraint_type,
+            **kwargs,
+        )
 
 
-# ============================================================================
-# Specialized CWE schema error types
-# ============================================================================
-
-
-class CweSchemaCircularReferenceError(CweSchemaValidationError):
+class CweSchemaCircularReferenceError(ValidationError):
     """CWE schema contains circular references."""
-
-    __slots__ = ("reference_chain",)
 
     def __init__(
         self,
         message: str,
-        reference_chain: list[str] | None = None,
+        *,
         schema_name: str | None = None,
         schema_version: str | None = None,
-    ):
+        reference_chain: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE schema circular reference error.
 
         Args:
-            message: The circular reference error message.
-            reference_chain: Optional chain of references that form the cycle.
-            schema_name: Optional name of the schema.
-            schema_version: Optional version of the schema.
+            message: The circular reference error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            reference_chain: Optional chain of references that form the cycle
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, schema_name, schema_version)
-        self.reference_chain = reference_chain or []
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
 
-    def get_context_parts(self) -> list[str]:
-        """Add circular reference details to context."""
-        parts = super().get_context_parts()
+        # Build validation context with reference chain
+        validation_context: str | None = None
+        if reference_chain:
+            chain: str = " → ".join(reference_chain)
+            validation_context = f"Chain: {chain}"
 
-        if self.reference_chain:
-            chain = " → ".join(self.reference_chain)
-            parts.append(f"Chain: {chain}")
+        super().__init__(
+            message,
+            schema_name=combined_schema,
+            validation_rule="circular_reference",
+            validation_context=validation_context,
+            **kwargs,
+        )
 
-        return parts
 
-
-class CweSchemaReferenceError(CweSchemaValidationError):
+class CweSchemaReferenceError(ValidationError):
     """CWE schema reference could not be resolved."""
-
-    __slots__ = ("reference_path", "reference_target")
 
     def __init__(
         self,
         message: str,
-        reference_path: str | None = None,
-        reference_target: str | None = None,
+        *,
         schema_name: str | None = None,
         schema_version: str | None = None,
-    ):
+        reference_path: str | None = None,
+        reference_target: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE schema reference error.
 
         Args:
-            message: The reference error message.
-            reference_path: Optional path to the unresolved reference.
-            reference_target: Optional target of the reference.
-            schema_name: Optional name of the schema.
-            schema_version: Optional version of the schema.
+            message: The reference error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            reference_path: Optional path to the unresolved reference
+            reference_target: Optional target of the reference
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, schema_name, schema_version)
-        self.reference_path = reference_path
-        self.reference_target = reference_target
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
 
-    def get_context_parts(self) -> list[str]:
-        """Add reference details to context."""
-        parts = super().get_context_parts()
+        # Build validation context with reference details
+        context_parts: list[str] = []
+        if reference_path:
+            context_parts.append(f"Reference: {reference_path}")
+        if reference_target:
+            context_parts.append(f"Target: {reference_target}")
 
-        if self.reference_path:
-            parts.append(f"Reference: {self.reference_path}")
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.reference_target:
-            parts.append(f"Target: {self.reference_target}")
+        super().__init__(
+            message,
+            schema_name=combined_schema,
+            validation_rule="reference_resolution",
+            validation_context=validation_context,
+            **kwargs,
+        )
 
-        return parts
+
+# ============================================================================
+# General CWE schema error (for operations that don't fit other categories)
+# ============================================================================
 
 
+class CweSchemaError(BaseTransparencyError):
+    """General CWE schema error for operations that don't fit specific categories."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        schema_name: str | None = None,
+        schema_version: str | None = None,
+        operation: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize general CWE schema error.
+
+        Args:
+            message: The error message
+            schema_name: Optional name of the schema
+            schema_version: Optional version of the schema
+            operation: Optional operation being performed
+            **kwargs: Additional context passed to base class
+        """
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
+
+        super().__init__(
+            message,
+            schema_name=combined_schema,
+            operation=operation,
+            **kwargs,
+        )
+
+
+# ============================================================================
 # Public API (alphabetical)
+# ============================================================================
+
 __all__ = [
     "CweSchemaCircularReferenceError",
     "CweSchemaConstraintError",

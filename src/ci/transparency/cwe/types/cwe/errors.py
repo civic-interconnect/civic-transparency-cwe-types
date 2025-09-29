@@ -1,151 +1,139 @@
-"""CWE domain error types with rich context.
+"""CWE domain error types using enhanced base classes.
 
-Domain-specific error hierarchy for CWE operations. Extends base error types
-to provide CWE-specific context like CWE IDs, relationship information, and
-validation details.
+Domain-specific error hierarchy for CWE operations. Each error inherits from
+exactly one enhanced base error class and leverages the flexible context system
+for CWE-specific information.
 
 Design principles:
-    - Inherits consistent formatting from base error types
-    - Adds CWE-specific context (CWE IDs, relationships, categories)
-    - Provides specific exception types for different CWE failure scenarios
-    - Maintains minimal memory overhead with __slots__
+    - Single inheritance: each error extends exactly one base error class
+    - Context-rich: uses the flexible context system for CWE details
+    - Consistent: maintains uniform error formatting across all errors
+    - Minimal: leverages base class functionality rather than duplicating code
 
-Core CWE errors:
-    - CweError: Base CWE error with CWE ID context
-    - CweLoadingError: CWE definition loading failures
-    - CweValidationError: CWE validation failures
-    - CweRelationshipError: CWE relationship validation failures
+Usage patterns:
+    - File operations → FileError, LoadingError, ParsingError
+    - Validation operations → ValidationError
+    - Processing operations → OperationError
+    - General operations → BaseTransparencyError
 
 Typical usage:
     from ci.transparency.cwe.types.cwe import CweValidationError
 
-    try:
-        validate_cwe_definition(cwe_data)
-    except CweValidationError as e:
-        # Rich context: "Validation failed | CWE: CWE-79 | Field: relationships[0] | File: cwe-79.yaml"
-        logger.error(f"CWE validation failed: {e}")
+    raise CweValidationError(
+        "Field validation failed",
+        item_id="CWE-79",
+        field_path="relationships[0].id",
+        validation_rule="required_field",
+        file_path="cwe-79.yaml"
+    )
+    # Output: "Field validation failed | Item: CWE-79 | Field: relationships[0].id | Rule: required_field | File: cwe-79.yaml"
 """
 
 from pathlib import Path
+from typing import Any
 
 from ci.transparency.cwe.types.base.errors import (
-    BaseLoadingError,
     BaseTransparencyError,
+    FileError,
+    LoadingError,
+    OperationError,
+    ParsingError,
+    ValidationError,
 )
 
+# ============================================================================
+# CWE loading error types (file-based operations)
+# ============================================================================
 
-class CweError(BaseLoadingError):
-    """Base exception for CWE operations.
 
-    Extends BaseLoadingError to add CWE-specific context like CWE identifiers
-    and categories.
-    """
-
-    __slots__ = ("cwe_id", "category")
+class CweLoadingError(LoadingError):
+    """Base CWE loading error."""
 
     def __init__(
         self,
         message: str,
+        *,
         cwe_id: str | None = None,
         category: str | None = None,
-        file_path: Path | None = None,
-    ):
-        """Initialize CWE error with CWE-specific context.
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize CWE loading error.
 
         Args:
             message: The error message
             cwe_id: Optional CWE identifier (e.g., "CWE-79")
             category: Optional CWE category
             file_path: Optional file path where the error occurred
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, file_path)
-        self.cwe_id = cwe_id
-        self.category = category
-
-    def get_context_parts(self) -> list[str]:
-        """Add CWE context to error message."""
-        parts = super().get_context_parts()
-
-        # Add CWE ID first for prominence
-        if self.cwe_id:
-            parts.insert(0, f"CWE: {self.cwe_id}")
-
-        if self.category:
-            parts.append(f"Category: {self.category}")
-
-        return parts
+        super().__init__(
+            message,
+            file_path=file_path,
+            item_id=cwe_id,
+            validation_context=f"Category: {category}" if category else None,
+            **kwargs,
+        )
 
 
-# ============================================================================
-# CWE loading error types
-# ============================================================================
-
-
-class CweLoadingError(CweError):
-    """Base CWE loading error."""
-
-
-class CweFileNotFoundError(CweLoadingError):
+class CweFileNotFoundError(LoadingError):
     """CWE definition file could not be found."""
-
-
-class CweParsingError(CweLoadingError):
-    """CWE definition file could not be parsed."""
-
-    __slots__ = ("parser_type", "line_number", "parse_details")
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize CWE file not found error."""
+        super().__init__(
+            message,
+            file_path=file_path,
+            item_id=cwe_id,
+            **kwargs,
+        )
+
+
+class CweParsingError(ParsingError):
+    """CWE definition file could not be parsed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        cwe_id: str | None = None,
         parser_type: str | None = None,
         line_number: int | None = None,
         parse_details: str | None = None,
-        cwe_id: str | None = None,
-        file_path: Path | None = None,
-    ):
-        """Initialize CWE parsing error.
-
-        Args:
-            message: The parsing error message
-            parser_type: Optional type of parser (e.g., "YAML", "JSON")
-            line_number: Optional line number where parsing failed
-            parse_details: Optional detailed parsing error information
-            cwe_id: Optional CWE identifier
-            file_path: Optional file path that failed to parse
-        """
-        super().__init__(message, cwe_id, None, file_path)
-        self.parser_type = parser_type
-        self.line_number = line_number
-        self.parse_details = parse_details
-
-    def get_context_parts(self) -> list[str]:
-        """Add parsing context to error message."""
-        parts = super().get_context_parts()
-
-        if self.parser_type:
-            parts.append(f"Parser: {self.parser_type}")
-
-        if self.line_number is not None:
-            parts.append(f"Line: {self.line_number}")
-
-        if self.parse_details:
-            parts.append(f"Details: {self.parse_details}")
-
-        return parts
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize CWE parsing error."""
+        super().__init__(
+            message,
+            file_path=file_path,
+            parser_type=parser_type,
+            line_number=line_number,
+            parse_details=parse_details,
+            item_id=cwe_id,  # CWE-specific context
+            **kwargs,
+        )
 
 
-class CweDuplicateError(CweLoadingError):
+class CweDuplicateError(LoadingError):
     """Duplicate CWE ID detected during loading."""
-
-    __slots__ = ("existing_file", "duplicate_file")
 
     def __init__(
         self,
         message: str,
+        *,
         cwe_id: str | None = None,
-        existing_file: Path | None = None,
-        duplicate_file: Path | None = None,
-    ):
+        existing_file: Path | str | None = None,
+        duplicate_file: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE duplicate error.
 
         Args:
@@ -153,107 +141,110 @@ class CweDuplicateError(CweLoadingError):
             cwe_id: Optional CWE identifier that's duplicated
             existing_file: Optional path to the existing CWE file
             duplicate_file: Optional path to the duplicate CWE file
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, cwe_id, None, duplicate_file)
-        self.existing_file = existing_file
-        self.duplicate_file = duplicate_file
+        # Build validation context with file paths
+        context_parts: list[str] = []
+        if existing_file:
+            context_parts.append(f"Existing: {existing_file}")
+        if duplicate_file:
+            context_parts.append(f"Duplicate: {duplicate_file}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add duplicate file context to error message."""
-        parts = super().get_context_parts()
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.existing_file:
-            parts.append(f"Existing: {self.existing_file}")
-
-        if self.duplicate_file:
-            parts.append(f"Duplicate: {self.duplicate_file}")
-
-        return parts
+        super().__init__(
+            message,
+            file_path=duplicate_file,
+            item_id=cwe_id,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
-class CweInvalidFormatError(CweLoadingError):
+class CweInvalidFormatError(FileError):
     """CWE definition format is invalid or unsupported."""
-
-    __slots__ = ("expected_format", "detected_format", "format_issue")
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
         expected_format: str | None = None,
         detected_format: str | None = None,
         format_issue: str | None = None,
-        cwe_id: str | None = None,
-        file_path: Path | None = None,
-    ):
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE invalid format error.
 
         Args:
             message: The format error message
+            cwe_id: Optional CWE identifier
             expected_format: Optional expected format (e.g., "YAML")
             detected_format: Optional detected format
             format_issue: Optional description of the format issue
-            cwe_id: Optional CWE identifier
             file_path: Optional file path with format issue
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, cwe_id, None, file_path)
-        self.expected_format = expected_format
-        self.detected_format = detected_format
-        self.format_issue = format_issue
+        # Build validation context with format details
+        context_parts: list[str] = []
+        if expected_format:
+            context_parts.append(f"Expected: {expected_format}")
+        if detected_format:
+            context_parts.append(f"Detected: {detected_format}")
+        if format_issue:
+            context_parts.append(f"Issue: {format_issue}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add format context to error message."""
-        parts = super().get_context_parts()
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.expected_format:
-            parts.append(f"Expected: {self.expected_format}")
-
-        if self.detected_format:
-            parts.append(f"Detected: {self.detected_format}")
-
-        if self.format_issue:
-            parts.append(f"Issue: {self.format_issue}")
-
-        return parts
+        super().__init__(
+            message,
+            file_path=file_path,
+            item_id=cwe_id,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
-class CweMissingFieldError(CweLoadingError):
+class CweMissingFieldError(LoadingError):
     """Required CWE field is missing from definition."""
-
-    __slots__ = ("field_name", "required_fields")
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
         field_name: str | None = None,
         required_fields: list[str] | None = None,
-        cwe_id: str | None = None,
-        file_path: Path | None = None,
-    ):
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE missing field error.
 
         Args:
             message: The missing field error message
+            cwe_id: Optional CWE identifier
             field_name: Optional name of the missing field
             required_fields: Optional list of all required fields
-            cwe_id: Optional CWE identifier
             file_path: Optional file path with missing field
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, cwe_id, None, file_path)
-        self.field_name = field_name
-        self.required_fields = required_fields or []
+        # Build validation context with field requirements
+        context_parts: list[str] = []
+        if required_fields:
+            required: str = ", ".join(required_fields)
+            context_parts.append(f"Required: {required}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add missing field context to error message."""
-        parts = super().get_context_parts()
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.field_name:
-            parts.append(f"Field: {self.field_name}")
-
-        if self.required_fields:
-            required = ", ".join(self.required_fields)
-            parts.append(f"Required: {required}")
-
-        return parts
+        super().__init__(
+            message,
+            file_path=file_path,
+            item_id=cwe_id,
+            field_path=field_name,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
 # ============================================================================
@@ -261,182 +252,184 @@ class CweMissingFieldError(CweLoadingError):
 # ============================================================================
 
 
-class CweValidationError(CweError):
+class CweValidationError(ValidationError):
     """Base CWE validation error."""
-
-    __slots__ = ("validation_type",)
 
     def __init__(
         self,
         message: str,
-        validation_type: str | None = None,
+        *,
         cwe_id: str | None = None,
         category: str | None = None,
-        file_path: Path | None = None,
-    ):
+        validation_type: str | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE validation error.
 
         Args:
             message: The validation error message
-            validation_type: Optional type of validation (e.g., "field", "schema", "relationship")
             cwe_id: Optional CWE identifier
             category: Optional CWE category
+            validation_type: Optional type of validation
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, cwe_id, category, file_path)
-        self.validation_type = validation_type
+        # Build validation context with category and type
+        context_parts: list[str] = []
+        if category:
+            context_parts.append(f"Category: {category}")
+        if validation_type:
+            context_parts.append(f"Type: {validation_type}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add validation type to context."""
-        parts = super().get_context_parts()
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.validation_type:
-            parts.append(f"Validation: {self.validation_type}")
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            file_path=file_path,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
-        return parts
 
-
-class CweFieldValidationError(CweValidationError):
+class CweFieldValidationError(ValidationError):
     """CWE field-level validation failed."""
-
-    __slots__ = ("field_name", "field_value", "validation_rule", "expected_value")
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
         field_name: str | None = None,
         field_value: str | None = None,
         validation_rule: str | None = None,
         expected_value: str | None = None,
-        cwe_id: str | None = None,
-        file_path: Path | None = None,
-    ):
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE field validation error.
 
         Args:
             message: The field validation error message
+            cwe_id: Optional CWE identifier
             field_name: Optional name of the field that failed validation
             field_value: Optional actual value of the field
             validation_rule: Optional validation rule that was violated
             expected_value: Optional expected value for the field
-            cwe_id: Optional CWE identifier
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, "field", cwe_id, None, file_path)
-        self.field_name = field_name
-        self.field_value = field_value
-        self.validation_rule = validation_rule
-        self.expected_value = expected_value
+        # Build validation context with field details
+        context_parts: list[str] = []
+        if field_value is not None:
+            context_parts.append(f"Value: {field_value}")
+        if expected_value:
+            context_parts.append(f"Expected: {expected_value}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add field validation details to context."""
-        parts = super().get_context_parts()
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.field_name:
-            parts.append(f"Field: {self.field_name}")
-
-        if self.field_value is not None:
-            parts.append(f"Value: {self.field_value}")
-
-        if self.expected_value:
-            parts.append(f"Expected: {self.expected_value}")
-
-        if self.validation_rule:
-            parts.append(f"Rule: {self.validation_rule}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            field_path=field_name,
+            validation_rule=validation_rule,
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
-class CweSchemaValidationError(CweValidationError):
+class CweSchemaValidationError(ValidationError):
     """CWE schema validation failed."""
-
-    __slots__ = ("schema_name", "schema_version", "field_path")
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
         schema_name: str | None = None,
         schema_version: str | None = None,
         field_path: str | None = None,
-        cwe_id: str | None = None,
-        file_path: Path | None = None,
-    ):
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE schema validation error.
 
         Args:
             message: The schema validation error message
+            cwe_id: Optional CWE identifier
             schema_name: Optional name of the schema
             schema_version: Optional version of the schema
-            field_path: Optional path to the field that failed (e.g., "relationships[0].id")
-            cwe_id: Optional CWE identifier
+            field_path: Optional path to the field that failed
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, "schema", cwe_id, None, file_path)
-        self.schema_name = schema_name
-        self.schema_version = schema_version
-        self.field_path = field_path
+        # Combine schema name and version
+        combined_schema: str | None = None
+        if schema_name and schema_version:
+            combined_schema = f"{schema_name}-{schema_version}"
+        elif schema_name:
+            combined_schema = schema_name
 
-    def get_context_parts(self) -> list[str]:
-        """Add schema validation context to error message."""
-        parts = super().get_context_parts()
-
-        if self.schema_name:
-            if self.schema_version:
-                parts.insert(-1, f"Schema: {self.schema_name}-{self.schema_version}")
-            else:
-                parts.insert(-1, f"Schema: {self.schema_name}")
-
-        if self.field_path:
-            parts.append(f"Field: {self.field_path}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            schema_name=combined_schema,
+            field_path=field_path,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
-class CweConstraintViolationError(CweValidationError):
+class CweConstraintViolationError(ValidationError):
     """CWE constraint validation failed."""
-
-    __slots__ = ("constraint_name", "constraint_value", "actual_value")
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
+        category: str | None = None,
         constraint_name: str | None = None,
         constraint_value: str | None = None,
         actual_value: str | None = None,
-        cwe_id: str | None = None,
-        category: str | None = None,
-        file_path: Path | None = None,
-    ):
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize CWE constraint violation error.
 
         Args:
             message: The constraint violation error message
+            cwe_id: Optional CWE identifier
+            category: Optional CWE category
             constraint_name: Optional name of the constraint
             constraint_value: Optional expected constraint value
             actual_value: Optional actual value that violated the constraint
-            cwe_id: Optional CWE identifier
-            category: Optional CWE category
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, "constraint", cwe_id, category, file_path)
-        self.constraint_name = constraint_name
-        self.constraint_value = constraint_value
-        self.actual_value = actual_value
+        # Build validation context with constraint details
+        context_parts: list[str] = []
+        if category:
+            context_parts.append(f"Category: {category}")
+        if constraint_name:
+            context_parts.append(f"Constraint: {constraint_name}")
+        if constraint_value:
+            context_parts.append(f"Expected: {constraint_value}")
+        if actual_value:
+            context_parts.append(f"Actual: {actual_value}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add constraint details to context."""
-        parts = super().get_context_parts()
+        validation_context: str | None = " | ".join(context_parts) if context_parts else None
 
-        if self.constraint_name:
-            parts.append(f"Constraint: {self.constraint_name}")
-
-        if self.constraint_value:
-            parts.append(f"Expected: {self.constraint_value}")
-
-        if self.actual_value:
-            parts.append(f"Actual: {self.actual_value}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            validation_rule="constraint",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
 # ============================================================================
@@ -444,94 +437,100 @@ class CweConstraintViolationError(CweValidationError):
 # ============================================================================
 
 
-class CweRelationshipError(CweValidationError):
+class CweRelationshipError(ValidationError):
     """CWE relationship validation failed."""
-
-    __slots__ = ("related_cwe_id", "relationship_type", "relationship_direction")
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
         related_cwe_id: str | None = None,
         relationship_type: str | None = None,
         relationship_direction: str | None = None,
-        cwe_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize CWE relationship error.
 
         Args:
             message: The relationship error message
-            related_cwe_id: Optional ID of the related CWE
-            relationship_type: Optional type of relationship (e.g., "ChildOf", "ParentOf")
-            relationship_direction: Optional direction (e.g., "outbound", "inbound")
             cwe_id: Optional source CWE identifier
+            related_cwe_id: Optional ID of the related CWE
+            relationship_type: Optional type of relationship
+            relationship_direction: Optional direction
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, "relationship", cwe_id, None, file_path)
-        self.related_cwe_id = related_cwe_id
-        self.relationship_type = relationship_type
-        self.relationship_direction = relationship_direction
+        # Build validation context with relationship details
+        context_parts: list[str] = []
+        if related_cwe_id:
+            context_parts.append(f"Related: {related_cwe_id}")
+        if relationship_type:
+            context_parts.append(f"Type: {relationship_type}")
+        if relationship_direction:
+            context_parts.append(f"Direction: {relationship_direction}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add relationship context to error message."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.related_cwe_id:
-            parts.append(f"Related: {self.related_cwe_id}")
-
-        if self.relationship_type:
-            parts.append(f"Type: {self.relationship_type}")
-
-        if self.relationship_direction:
-            parts.append(f"Direction: {self.relationship_direction}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            validation_rule="relationship",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
-class CweCircularRelationshipError(CweRelationshipError):
+class CweCircularRelationshipError(ValidationError):
     """Circular CWE relationship detected."""
-
-    __slots__ = ("relationship_chain",)
 
     def __init__(
         self,
         message: str,
-        relationship_chain: list[str] | None = None,
+        *,
         cwe_id: str | None = None,
-        file_path: Path | None = None,
+        relationship_chain: list[str] | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize CWE circular relationship error.
 
         Args:
             message: The circular relationship error message
-            relationship_chain: Optional chain of CWE IDs that form the cycle
             cwe_id: Optional source CWE identifier
+            relationship_chain: Optional chain of CWE IDs that form the cycle
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, None, "circular", None, cwe_id, file_path)
-        self.relationship_chain = relationship_chain or []
+        # Build validation context with relationship chain
+        validation_context = None
+        if relationship_chain:
+            chain = " → ".join(relationship_chain)
+            validation_context = f"Chain: {chain}"
 
-    def get_context_parts(self) -> list[str]:
-        """Add relationship chain to context."""
-        parts = super().get_context_parts()
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            validation_rule="circular_relationship",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
-        if self.relationship_chain:
-            chain = " → ".join(self.relationship_chain)
-            parts.append(f"Chain: {chain}")
 
-        return parts
-
-
-class CweOrphanedError(CweRelationshipError):
+class CweOrphanedError(ValidationError):
     """CWE has no valid relationships."""
 
     def __init__(
         self,
         message: str,
+        *,
         cwe_id: str | None = None,
         category: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize CWE orphaned error.
 
@@ -540,53 +539,58 @@ class CweOrphanedError(CweRelationshipError):
             cwe_id: Optional CWE identifier that's orphaned
             category: Optional CWE category
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, None, "orphaned", None, cwe_id, file_path)
-        self.category = category
-
-    def get_context_parts(self) -> list[str]:
-        """Add category to context for orphaned CWEs."""
-        parts = super().get_context_parts()
-
-        if self.category:
-            parts.append(f"Category: {self.category}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            validation_rule="orphaned",
+            validation_context=f"Category: {category}" if category else None,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
-class CweInvalidReferenceError(CweRelationshipError):
+class CweInvalidReferenceError(ValidationError):
     """CWE relationship references unknown CWE ID."""
-
-    __slots__ = ("reference_source",)
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
         related_cwe_id: str | None = None,
         reference_source: str | None = None,
-        cwe_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize CWE invalid reference error.
 
         Args:
             message: The invalid reference error message
-            related_cwe_id: Optional ID that couldn't be found
-            reference_source: Optional source of the reference (e.g., "relationships", "taxonomy")
             cwe_id: Optional source CWE identifier
+            related_cwe_id: Optional ID that couldn't be found
+            reference_source: Optional source of the reference
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, related_cwe_id, "invalid_reference", None, cwe_id, file_path)
-        self.reference_source = reference_source
+        # Build validation context with reference details
+        context_parts: list[str] = []
+        if related_cwe_id:
+            context_parts.append(f"Related: {related_cwe_id}")
+        if reference_source:
+            context_parts.append(f"Source: {reference_source}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add reference source to context."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.reference_source:
-            parts.append(f"Source: {self.reference_source}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            validation_rule="invalid_reference",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
 # ============================================================================
@@ -594,17 +598,17 @@ class CweInvalidReferenceError(CweRelationshipError):
 # ============================================================================
 
 
-class CweProcessingError(BaseTransparencyError):
+class CweProcessingError(OperationError):
     """CWE processing operation failed."""
-
-    __slots__ = ("operation", "processed_count", "total_count")
 
     def __init__(
         self,
         message: str,
+        *,
         operation: str | None = None,
         processed_count: int | None = None,
         total_count: int | None = None,
+        **kwargs: Any,
     ):
         """Initialize CWE processing error.
 
@@ -613,83 +617,74 @@ class CweProcessingError(BaseTransparencyError):
             operation: Optional name of the operation being performed
             processed_count: Optional number of items processed before failure
             total_count: Optional total number of items to process
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message)
-        self.operation = operation
-        self.processed_count = processed_count
-        self.total_count = total_count
-
-    def get_context_parts(self) -> list[str]:
-        """Add processing context to error message."""
-        parts = super().get_context_parts()
-
-        if self.operation:
-            parts.append(f"Operation: {self.operation}")
-
-        if self.processed_count is not None and self.total_count is not None:
-            parts.append(f"Progress: {self.processed_count}/{self.total_count}")
-        elif self.processed_count is not None:
-            parts.append(f"Processed: {self.processed_count}")
-
-        return parts
+        super().__init__(
+            message,
+            operation=operation,
+            processed_count=processed_count,
+            total_count=total_count,
+            **kwargs,
+        )
 
 
-class CweIntegrityError(CweError):
+class CweIntegrityError(ValidationError):
     """CWE data integrity violation."""
-
-    __slots__ = ("integrity_check", "expected_value", "actual_value")
 
     def __init__(
         self,
         message: str,
+        *,
+        cwe_id: str | None = None,
         integrity_check: str | None = None,
         expected_value: str | None = None,
         actual_value: str | None = None,
-        cwe_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize CWE integrity error.
 
         Args:
             message: The integrity error message
+            cwe_id: Optional CWE identifier
             integrity_check: Optional name of the integrity check that failed
             expected_value: Optional expected value
             actual_value: Optional actual value found
-            cwe_id: Optional CWE identifier
             file_path: Optional file path being checked
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, cwe_id, None, file_path)
-        self.integrity_check = integrity_check
-        self.expected_value = expected_value
-        self.actual_value = actual_value
+        # Build validation context with integrity details
+        context_parts: list[str] = []
+        if integrity_check:
+            context_parts.append(f"Check: {integrity_check}")
+        if expected_value:
+            context_parts.append(f"Expected: {expected_value}")
+        if actual_value:
+            context_parts.append(f"Actual: {actual_value}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add integrity check details to context."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.integrity_check:
-            parts.append(f"Check: {self.integrity_check}")
-
-        if self.expected_value:
-            parts.append(f"Expected: {self.expected_value}")
-
-        if self.actual_value:
-            parts.append(f"Actual: {self.actual_value}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=cwe_id,
+            validation_rule="integrity",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
 class CweConfigurationError(BaseTransparencyError):
     """CWE configuration error."""
 
-    __slots__ = ("config_key", "config_value", "valid_values")
-
     def __init__(
         self,
         message: str,
+        *,
         config_key: str | None = None,
         config_value: str | None = None,
         valid_values: list[str] | None = None,
+        **kwargs: Any,
     ):
         """Initialize CWE configuration error.
 
@@ -698,24 +693,43 @@ class CweConfigurationError(BaseTransparencyError):
             config_key: Optional configuration key that caused the error
             config_value: Optional invalid configuration value
             valid_values: Optional list of valid configuration values
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message)
-        self.config_key = config_key
-        self.config_value = config_value
-        self.valid_values = valid_values or []
+        # Build validation context with valid values
+        validation_context = None
+        if valid_values:
+            valid_str = ", ".join(valid_values)
+            validation_context = f"Valid: {valid_str}"
 
-    def get_context_parts(self) -> list[str]:
-        """Add configuration context to error message."""
-        parts = super().get_context_parts()
+        super().__init__(
+            message,
+            item_id=config_key,
+            validation_context=validation_context,
+            error_code=config_value,
+            **kwargs,
+        )
 
-        if self.config_key:
-            parts.append(f"Config: {self.config_key}")
 
-        if self.config_value:
-            parts.append(f"Value: {self.config_value}")
+# ============================================================================
+# Public API (alphabetical)
+# ============================================================================
 
-        if self.valid_values:
-            valid_str = ", ".join(self.valid_values)
-            parts.append(f"Valid: {valid_str}")
-
-        return parts
+__all__ = [
+    "CweCircularRelationshipError",
+    "CweConfigurationError",
+    "CweConstraintViolationError",
+    "CweDuplicateError",
+    "CweFieldValidationError",
+    "CweFileNotFoundError",
+    "CweIntegrityError",
+    "CweInvalidFormatError",
+    "CweInvalidReferenceError",
+    "CweLoadingError",
+    "CweMissingFieldError",
+    "CweOrphanedError",
+    "CweParsingError",
+    "CweProcessingError",
+    "CweRelationshipError",
+    "CweSchemaValidationError",
+    "CweValidationError",
+]

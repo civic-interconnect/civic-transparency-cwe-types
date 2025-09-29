@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=77", "wheel", "setuptools-scm>=8"]
+requires = ["setuptools>=77", "wheel", "setuptools-scm[toml]>=8"]
 
 [project]
 authors = [{name = "Civic Interconnect"}]
@@ -127,6 +127,18 @@ DEP002 = [
   "mike",
 ]
 
+[tool.pyright]
+executionEnvironments = [
+  {root = "src", extraPaths = ["src"]},
+  {root = "tests", extraPaths = ["src"]},
+]
+include = ["src", "tests"]
+pythonVersion = "3.12"
+reportMissingTypeStubs = "warning"
+typeCheckingMode = "strict"
+venv = ".venv"
+venvPath = "."
+
 [tool.pytest.ini_options]
 addopts = [
   "-ra", # show extra test summary info for skipped, failed, etc.
@@ -151,9 +163,9 @@ PYTEST_CURRENT_TEST = "true"
 exclude = [".venv", ".ruff_cache", "build", "dist", "*.egg-info", ".eggs", "__pycache__", "tests"]
 fix = true
 line-length = 100
-preview = true
+preview = false
 target-version = "py312"
-unsafe-fixes = true
+unsafe-fixes = false
 
 [tool.ruff.format]
 line-ending = "lf"
@@ -167,7 +179,7 @@ extend-select = [
   "I", # Sort imports properly
   "UP", # Newer Python features
   "C4", # Catch incorrect use of comprehensions, dict, list, etc
-  "C408", # f-string related checks
+  "C408", # unnecessary comprehension
   "D", # Docstring conventions
   "Q", # flake8-quotes
   "S", # Security issues
@@ -193,6 +205,7 @@ ignore = [
 force-sort-within-sections = true
 
 [tool.ruff.lint.per-file-ignores]
+"src/**/__init__.py" = ["D104"]
 "tests/**/*.py" = ["TID251", "TID252", "S101", "D"]
 
 [tool.setuptools]
@@ -208,7 +221,6 @@ where = ["src"]
 "ci.transparency.cwe.types" = ["py.typed"]
 
 [tool.setuptools_scm]
-write_to = "src/ci/transparency/cwe/types/_version.py"
-version_scheme = "guess-next-dev"
-local_scheme = "dirty-tag"
 fallback_version = "0.0.1"
+local_scheme = "dirty-tag"
+version_scheme = "guess-next-dev"

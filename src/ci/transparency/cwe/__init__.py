@@ -1,1 +1,0 @@
-"""Civic Transparency CWE package."""

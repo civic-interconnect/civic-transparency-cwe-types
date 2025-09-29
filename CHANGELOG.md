@@ -13,6 +13,15 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 
 ---
 
+## [0.0.7] - 2025-09-28
+
+### Changed
+
+- Refactored results to use composition instead of inheritance.
+- Refactored errors to use clear inheritance.
+
+---
+
 ## [0.0.6] - 2025-09-27
 
 ### Changed
@@ -83,7 +92,8 @@ and this project adheres to **[Semantic Versioning](https://semver.org/spec/v2.0
 - Versions are driven by git tags via `setuptools_scm`. Tag `vX.Y.Z` to release.
 - Docs are deployed per version tag and aliased to **latest**.
 
-[Unreleased]: https://github.com/civic-interconnect/civic-transparency-cwe-types/compare/v0.0.6...HEAD
+[Unreleased]: https://github.com/civic-interconnect/civic-transparency-cwe-types/compare/v0.0.7...HEAD
+[0.0.7]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.7
 [0.0.6]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.6
 [0.0.5]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.5
 [0.0.4]: https://github.com/civic-interconnect/civic-transparency-cwe-types/releases/tag/v0.0.4

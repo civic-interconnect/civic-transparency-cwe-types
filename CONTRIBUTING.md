@@ -1,17 +1,17 @@
 # CONTRIBUTING.md
 
-This repo hosts the **Civic Transparency CWE Types** under the **MIT License**.
-Our goals are clarity, privacy-by-design, and low friction for collaborators.
+This repo hosts **Civic Transparency CWE Types** (MIT).
+Goals: clarity, privacy-by-design, and low friction for collaborators.
 
-> tl;dr: open an Issue or Discussion first for anything non-trivial, keep PRs small and focused, and please run the quick local checks below.
+> tl;dr - open an Issue/Discussion first for non-trivial work, keep PRs small, and run the quick checks below.
 
 ---
 
 ## Ways to Contribute
 
-- **Docs**: Fix typos, clarify definitions, or improve examples in `docs/en/**`.
-- **Code**: Add or refine typed result/error classes and tests in `src/ci/transparency/cwe/types/`.
-- **Actions**: Propose changes to project workflow and action files to follow best practices.
+- **Docs**: Fix typos or improve examples in `docs/en/**`.
+- **Code**: Add/refine typed result/error classes and tests (under `src/ci/transparency/cwe/types/`).
+- **Tooling**: Improve checks and workflows to follow best practices.
 
 ---
 
@@ -19,8 +19,8 @@ Our goals are clarity, privacy-by-design, and low friction for collaborators.
 
 - **Code of Conduct**: Be respectful and constructive. Reports: `info@civicinterconnect.org`.
 - **License**: All contributions are accepted under the repo's **MIT License**.
-- **Namespaces**: We use standard Python packages with `__init__.py` files in shared dirs like `ci/`, `ci/transparency/`, `ci/transparency/cwe/` (used by mkdocs).
-- **Typing**: This package ships `py.typed`. Keep types accurate and Pyright/mypy-friendly.
+- **Typing**: Package ships `py.typed`. Keep types strict (Pyright “strict”, mypy-friendly).
+- **Imports**: No re-exports; import from **leaf modules** (prefer explicit).
 
 ---
 
@@ -30,180 +30,196 @@ Our goals are clarity, privacy-by-design, and low friction for collaborators.
 
 ---
 
-## Making Changes
+## Local Dev with `uv`
 
-- Follow **Semantic Versioning** via git tags (we use `setuptools-scm`):
-  - **MAJOR**: breaking changes
-  - **MINOR**: backwards-compatible additions
-  - **PATCH**: clarifications/typos
-- Update related docs, examples, and `CHANGELOG.md` when behavior or APIs change.
+### Prerequisites
 
----
+- Python **3.12+** (3.13 supported)
+- Git, VS Code (optional), and **[uv](https://github.com/astral-sh/uv)**
 
-## Commit & PR guidelines
-
-- **Small PRs**: one focused change per PR.
-- **Titles**: start with area, e.g., `code: fix deprecation warning`.
-- **Link** the Issue/Discussion when applicable.
-- Prefer **squash merging** for a clean history.
-- No DCO/CLA required.
-
----
-
-## Questions / Support
-
-- **Discussion:** For open-ended design questions.
-- **Issue:** For concrete bugs or proposed text/schema changes.
-- **Private contact:** `info@civicinterconnect.org` (for sensitive reports).
-
----
-
-## DEV 0. Install Recommended Tools
-
-- Python 3.12+
-- Git
-- VS Code
-- VS Code Extensions
-- uv
-
----
-
-## DEV 1. Start Locally
+### One-time setup
 
 ```bash
+# Pin project interpreter and create venv
+uv python pin 3.12
 uv venv
+
+# Install dev + docs extras (uses pyproject.toml)
 uv sync --extra dev --extra docs --upgrade
-pre-commit install
+
+# Install pre-commit hooks
+uv run pre-commit install
 ```
 
-## DEV 2. Validate Changes
+> **VS Code tip:** Do **not** set `python.analysis.*` overrides in `.vscode/settings.json`.
+> Pyright is configured in `pyproject.toml`. If you see “settingsNotOverridable” warnings, remove those workspace overrides.
+> Select the interpreter at `.venv` (Command Palette → “Python: Select Interpreter”).
 
-1. Pull from the GitHub repo.
-2. Clean the cache.
-3. Reinstall dev+docs extras.
-4. Stage changes with git add.
-5. Use ruff to lint and format.
-6. Run pre-commit hooks (twice if needed).
-7. Run tests with coverage verification.
-8. Verify package imports work correctly.
-9. Build docs (sanity check).
+---
 
-## Example Commands
+## Validate Your Changes
+
+**Quick pass (Unix/macOS):**
 
 ```bash
-git pull
-uv cache clean
-uv sync --extra dev --extra docs --upgrade
-git add .
 uv run ruff check . --fix && uv run ruff format .
-pre-commit run --all-files
-
-# Verify tests pass and meet coverage threshold
-uv run pytest --cov-fail-under=80 "tests/"
-
-# Verify package imports work (Linux/macOS)
-python -c "import ci.transparency.cwe.types; print('Package imports successfully')"
-
-# Verify package imports work (Windows PowerShell)
-py -c 'import ci.transparency.cwe.types; print("Package imports successfully")'
-
-# Verify docs build and autodoc finds all modules
+uv run pyright
+uv run pytest --cov-fail-under=80
+uv pip install -e ".[dev,docs]" --upgrade
 uv run mkdocs build
 ```
 
-## DEV 3. Build and Verify Package
+**Quick pass (Windows PowerShell):**
 
-Mac/Linux (build and inspect wheel)
+```pwsh
+uv run ruff check . --fix; uv run ruff format .
+uv run pyright
+uv run pytest --cov-fail-under=80
+uv pip install -e ".[dev,docs]" --upgrade
+uv run mkdocs build
+```
+
+Or run the project hooks (twice, if needed):
+
+```bash
+pre-commit run --all-files
+```
+
+---
+
+## Commit & PR Guidelines
+
+- **Small PRs**: one focused change per PR.
+- **Title prefix**: `docs:`, `code:`, `types:`, `tests:`, `ci:`, etc.
+- **Link** the related Issue/Discussion.
+- Prefer **squash merge** for a clean history.
+- Update docs and tests alongside behavior/API changes.
+
+---
+
+## Testing
+
+```bash
+uv run pytest -v --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml
+```
+
+- Coverage target is **80%** (config in `pyproject.toml`).
+- Put tests under `tests/` and name files `test_*.py`.
+
+---
+
+## Linting & Types
+
+- **Ruff** (lint + format): configured in `pyproject.toml`
+- **Pyright** (strict): configured in `pyproject.toml`
+
+```bash
+uv run ruff check . --fix
+uv run ruff format .
+uv run pyright
+```
+
+---
+
+## Build & Inspect the Package
 
 ```bash
 uv run python -m build
+# Inspect wheel contents (Unix/macOS):
 unzip -l dist/*.whl
-
-# Verify wheel contents look correct
-echo "Verify wheel contains:"
-echo "- ci/transparency/cwe/types/ modules"
-echo "- py.typed marker file"
-echo "- No unexpected files"
-```
-
-Windows PowerShell (build, extract, clean up)
-
-```pwsh
-uv run python -m build
-
+# Windows (PowerShell):
 $TMP = New-Item -ItemType Directory -Path ([System.IO.Path]::GetTempPath()) -Name ("wheel_" + [System.Guid]::NewGuid())
 Expand-Archive dist\*.whl -DestinationPath $TMP.FullName
-
 Get-ChildItem -Recurse $TMP.FullName | ForEach-Object { $_.FullName.Replace($TMP.FullName + '\','') }
-
-Write-Host "Verify wheel contains ci/transparency/cwe/types/ and py.typed"
-
 Remove-Item -Recurse -Force $TMP
 ```
 
-## DEV 4. Preview Docs
+Verify the wheel includes:
+
+- `ci/transparency/cwe/types/**`
+- `py.typed`
+- No unexpected files
+
+---
+
+## Docs
 
 ```bash
-uv run mkdocs serve
-```
-
-Open: <http://127.0.0.1:8000/>. Use CTRL c to close the process when done.
-
-**Verify docs look correct:**
-
-- All autodoc sections load without errors
-- Navigation works properly
-- Examples render correctly
-
-## DEV 5. Release
-
-We use **`setuptools-scm`**; version is derived from git tags (e.g., `v0.1.0`).
-Ensure the tag is created **after** your changes are merged.
-
-1. Update `CHANGELOG.md` with notable changes.
-2. Ensure all CI checks pass.
-3. Run final pre-release verification.
-4. Build and verify package locally.
-5. Tag and push.
-
-## Pre-Release Verification
-
-Before tagging a release, run these final checks:
-
-```bash
-# Comprehensive validation
-uv run ruff check . --fix && uv run ruff format .
-pre-commit run --all-files
-uv run pytest --cov-fail-under=80
-
-# Package verification (use correct command for your os)
-uv run python -m build
-python -c "import ci.transparency.cwe.types; print('Package imports successfully')"
-py -c 'import ci.transparency.cwe.types; print("Package imports successfully")'
-
-# Documentation verification
+# Build once
 uv run mkdocs build
 
-# Final commit and tag
-git add .
-git commit -m "Prep vx.y.z"
-git push -u origin main
-
-# Verify CI & Docs Actions pass on GitHub, then:
-git tag vx.y.z -m "x.y.z"
-git push origin vx.y.z
+# Live preview
+uv run mkdocs serve
+# Visit http://127.0.0.1:8000/
 ```
 
-**Release checklist:**
+Ensure:
 
-- [ ] All tests pass with required coverage
-- [ ] Package builds without errors
-- [ ] All imports work correctly
-- [ ] Documentation builds successfully
-- [ ] Pre-commit hooks pass
-- [ ] CHANGELOG.md updated
-- [ ] CI checks pass on GitHub
+- Autodoc renders without errors
+- Navigation works
+- Examples render correctly
 
-> A GitHub Action will **build**, **publish to PyPI** (Trusted Publishing), **create a GitHub Release** with artifacts, and **deploy versioned docs** with `mike`.
+---
 
-> You do **not** need to run `gh release create` or upload files manually.
+## Release
+
+We use **setuptools-scm**; version derives from **git tags**.
+
+1. Update `CHANGELOG.md`.
+2. Ensure CI is green.
+3. Final local checks (lint, types, tests, docs).
+4. Build locally and sanity-check the wheel.
+5. Tag and push.
+
+**Pre-release script:**
+
+```bash
+git add .
+uv run ruff check . --fix && uv run ruff format .
+pre-commit run --all-files
+uv run pyright
+uv run pytest --cov-fail-under=80
+uv run mkdocs build
+uv build
+
+# Import sanity check (choose your platform command)
+python -c "import ci.transparency.cwe.types; print('Package imports OK')"
+# or
+py -c "import ci.transparency.cwe.types; print('Package imports OK')"
+
+git add .
+git commit -m "Prep vX.Y.Z"
+git push -u origin main
+
+# Verify the GitHub actions run successfully. If so, continue:
+git tag vX.Y.Z -m "X.Y.Z"
+git push origin vX.Y.Z
+```
+
+A GitHub Action will:
+
+- Build and publish to **PyPI** (Trusted Publishing),
+- Create a **GitHub Release** with artifacts,
+- Deploy **versioned docs** with `mike`.
+
+## Cleanup
+
+**Unix/macOS:**
+
+```bash
+find . -name '__pycache__' -type d -prune -exec rm -rf {} +
+rm -rf build/ dist/ .eggs/ src/*.egg-info/
+```
+
+**Windows PowerShell:**
+
+```pwsh
+Get-ChildItem -Recurse -Include __pycache__,*.egg-info,build,dist | Remove-Item -Recurse -Force
+```
+---
+
+## Support
+
+- **Discussions**: Open design questions
+- **Issues**: Bugs or concrete proposals
+- **Private**: `info@civicinterconnect.org` (sensitive reports)

@@ -28,13 +28,11 @@ nav:
     - Usage: usage.md
     - Types:
         - Base: api/base.md
-        - Batch: api/batch.md
         - CWE: api/cwe.md
         - CWE Schema: api/cwe_schema.md
         - Schema: api/schema.md
         - Schema Evolution: api/schema_evolution.md
         - Standards: api/standards.md
-        - Validation: api/validation.md
 
 docs_dir: docs/en
 
@@ -60,9 +58,12 @@ plugins:
                 options:
                     docstring_style: google
                     show_source: false
+                    members: true
+                    show_root_heading: true
                     show_signature: true
                     group_by_category: true
                     filters: ["!^_"] # hide private members
+                    find_stubs_package: true
 
 markdown_extensions:
     - admonition

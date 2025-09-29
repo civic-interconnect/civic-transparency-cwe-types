@@ -6,9 +6,10 @@
 .DS_Store
 
 # ----------------------------------------
-# Visual Studio Code (always ignore)
+# IDE (always ignore)
 # ----------------------------------------
 .vscode/
+.idea/
 
 # ----------------------------------------
 # Environment variables and secrets (always ignore)
@@ -24,6 +25,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py[cod]
 
 # ----------------------------------------
 # Generated artifacts (ignore build and distribution artifacts)
@@ -44,9 +46,11 @@ htmlcov/
 *.egg-info/
 dist/
 build/
+.eggs/
 
 # envs / misc
 .venv/
+venv/
 __pycache__/
 .DS_Store
 

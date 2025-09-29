@@ -1,59 +1,237 @@
-"""Base error types for transparency operations.
+"""Enhanced base error types for transparency operations.
 
-Provides base exception classes with contextual information and consistent
-formatting patterns. Domain-specific error hierarchies extend these base
-types to provide rich error context and structured error handling.
+Provides comprehensive base exception classes that capture common patterns across
+all transparency domains (CWE, schema validation, standards processing).
 
 Design principles:
-    - Contextual: errors capture relevant context (file paths, IDs, frameworks)
-    - Consistent: all errors follow the same __str__ formatting pattern
+    - Flexible: supports optional context fields without requiring all errors to use them
+    - Contextual: captures progress, operations, resources, files, validation, and abort context
+    - Consistent: maintains uniform formatting with " | " separator
     - Slotted: minimal memory overhead with __slots__
-    - Hierarchical: base classes allow generic error handling
+    - Hierarchical: specific base classes for common operation types
 
 Core error hierarchy:
-    - BaseTransparencyError: Root exception for all transparency operations
-    - BaseLoadingError: Loading operations (adds file_path context)
-    - BaseValidationError: Validation operations (adds validation_context)
-
-Common error types:
-    - FileNotFoundError: File could not be found during loading
-    - ParsingError: File could not be parsed (YAML, JSON, etc.)
-    - ValidationError: File content failed validation checks
-    - ConfigurationError: Configuration is invalid or incomplete
+    - BaseTransparencyError: Root exception with flexible context support
+    - OperationError: Operations with progress tracking (batch, phase processing)
+    - ResourceError: Resource-constrained operations (timeouts, limits)
+    - ValidationError: Validation operations with rule/schema context
+    - FileError: File-based operations with path context
 
 All errors use consistent formatting: "message | Context1: value | Context2: value"
+Context is only included when relevant fields are populated.
 """
 
 from pathlib import Path
+from typing import Any
 
 
 class BaseTransparencyError(Exception):
-    """Base exception for all transparency operations.
+    """Enhanced base exception for all transparency operations.
 
-    Provides consistent error formatting and context tracking across all
-    transparency-related exceptions.
+    Provides flexible context tracking for common error patterns without
+    requiring all errors to specify every possible context field.
     """
 
-    __slots__ = ("message",)
+    __slots__ = (
+        "message",
+        # Progress tracking
+        "processed_count",
+        "total_count",
+        "batch_size",
+        # Operation identification
+        "operation",
+        "phase_name",
+        "stage",
+        # Resource constraints
+        "timeout_seconds",
+        "elapsed_seconds",
+        "resource_type",
+        "limit_reached",
+        "resource_usage",
+        # File/item context
+        "file_path",
+        "item_id",
+        # Validation context
+        "validation_context",
+        "validation_rule",
+        "schema_name",
+        "field_path",
+        # Error flow control
+        "abort_reason",
+        "error_code",
+    )
 
-    def __init__(self, message: str):
-        """Initialize base transparency error.
+    def __init__(
+        self,
+        message: str,
+        *,
+        # Progress tracking
+        processed_count: int | None = None,
+        total_count: int | None = None,
+        batch_size: int | None = None,
+        # Operation identification
+        operation: str | None = None,
+        phase_name: str | None = None,
+        stage: str | None = None,
+        # Resource constraints
+        timeout_seconds: float | None = None,
+        elapsed_seconds: float | None = None,
+        resource_type: str | None = None,
+        limit_reached: str | None = None,
+        resource_usage: str | None = None,
+        # File/item context
+        file_path: Path | str | None = None,
+        item_id: str | None = None,
+        # Validation context
+        validation_context: str | None = None,
+        validation_rule: str | None = None,
+        schema_name: str | None = None,
+        field_path: str | None = None,
+        # Error flow control
+        abort_reason: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        """Initialize transparency error with optional context.
 
         Args:
             message: The error message describing what went wrong
+            processed_count: Number of items processed before error
+            total_count: Total number of items expected
+            batch_size: Size of processing batch
+            operation: Name of the operation being performed
+            phase_name: Name of the processing phase
+            stage: Processing stage (setup, processing, cleanup, etc.)
+            timeout_seconds: Timeout limit that was exceeded
+            elapsed_seconds: Actual time elapsed before timeout
+            resource_type: Type of resource (memory, disk, threads, etc.)
+            limit_reached: Description of limit that was reached
+            resource_usage: Description of current resource usage
+            file_path: Path to relevant file
+            item_id: Identifier of specific item being processed
+            validation_context: Context about what was being validated
+            validation_rule: Name of validation rule that failed
+            schema_name: Name of schema being validated against
+            field_path: Path to field that failed (e.g., "data.items[0].id")
+            abort_reason: Reason why operation was aborted
+            error_code: Machine-readable error code
         """
         super().__init__(message)
-        self.message = message
+        self.message: str = message
+
+        # Progress tracking
+        self.processed_count: int | None = processed_count
+        self.total_count: int | None = total_count
+        self.batch_size: int | None = batch_size
+
+        # Operation identification
+        self.operation: str | None = operation
+        self.phase_name: str | None = phase_name
+        self.stage: str | None = stage
+
+        # Resource constraints
+        self.timeout_seconds: float | None = timeout_seconds
+        self.elapsed_seconds: float | None = elapsed_seconds
+        self.resource_type: str | None = resource_type
+        self.limit_reached: str | None = limit_reached
+        self.resource_usage: str | None = resource_usage
+
+        # File/item context
+        self.file_path: Path | None = Path(file_path) if file_path else None
+        self.item_id: str | None = item_id
+
+        # Validation context
+        self.validation_context: str | None = validation_context
+        self.validation_rule: str | None = validation_rule
+        self.schema_name: str | None = schema_name
+        self.field_path: str | None = field_path
+
+        # Error flow control
+        self.abort_reason: str | None = abort_reason
+        self.error_code: str | None = error_code
+
+    def _add_operation_context(self, parts: list[str]) -> None:
+        """Add operation identification context."""
+        if self.phase_name:
+            parts.append(f"Phase: {self.phase_name}")
+        elif self.operation:
+            parts.append(f"Operation: {self.operation}")
+
+        if self.stage:
+            parts.append(f"Stage: {self.stage}")
+
+    def _add_progress_context(self, parts: list[str]) -> None:
+        """Add progress tracking context."""
+        if self.processed_count is not None and self.total_count is not None:
+            parts.append(f"Progress: {self.processed_count}/{self.total_count}")
+        elif self.processed_count is not None:
+            parts.append(f"Processed: {self.processed_count}")
+
+        if self.batch_size is not None:
+            parts.append(f"Batch Size: {self.batch_size}")
+
+    def _add_resource_context(self, parts: list[str]) -> None:
+        """Add resource constraint context."""
+        if self.resource_type:
+            parts.append(f"Resource: {self.resource_type}")
+        if self.timeout_seconds:
+            parts.append(f"Timeout: {self.timeout_seconds}s")
+        if self.elapsed_seconds:
+            parts.append(f"Elapsed: {self.elapsed_seconds:.1f}s")
+        if self.limit_reached:
+            parts.append(f"Limit: {self.limit_reached}")
+        if self.resource_usage:
+            parts.append(f"Usage: {self.resource_usage}")
+
+    def _add_file_item_context(self, parts: list[str]) -> None:
+        """Add file and item context."""
+        if self.file_path:
+            parts.append(f"File: {self.file_path}")
+        if self.item_id:
+            parts.append(f"Item: {self.item_id}")
+
+    def _add_validation_context(self, parts: list[str]) -> None:
+        """Add validation context."""
+        if self.schema_name:
+            parts.append(f"Schema: {self.schema_name}")
+        if self.validation_rule:
+            parts.append(f"Rule: {self.validation_rule}")
+        if self.field_path:
+            parts.append(f"Field: {self.field_path}")
+        if self.validation_context:
+            parts.append(f"Context: {self.validation_context}")
+
+    def _add_error_flow_context(self, parts: list[str]) -> None:
+        """Add error flow control context."""
+        if self.abort_reason:
+            parts.append(f"Reason: {self.abort_reason}")
+        if self.error_code:
+            parts.append(f"Code: {self.error_code}")
 
     def get_context_parts(self) -> list[str]:
         """Get contextual information parts for error formatting.
 
-        Subclasses override this to add their own contextual information.
+        Returns context in order of importance:
+        1. Operation identification (phase, operation, stage)
+        2. Progress information (processed/total counts)
+        3. Resource information (timeouts, limits)
+        4. File/item context
+        5. Validation context
+        6. Error flow context (abort reason, error code)
 
         Returns:
-            List of context strings (e.g., ["File: path.yaml", "ID: CWE-123"])
+            List of context strings (e.g., ["Phase: validation", "Progress: 150/500"])
         """
-        return []
+        parts: list[str] = []
+
+        # Add context in order of importance
+        self._add_operation_context(parts)
+        self._add_progress_context(parts)
+        self._add_resource_context(parts)
+        self._add_file_item_context(parts)
+        self._add_validation_context(parts)
+        self._add_error_flow_context(parts)
+
+        return parts
 
     def __str__(self) -> str:
         """Format error with message and context information.
@@ -61,319 +239,254 @@ class BaseTransparencyError(Exception):
         Returns:
             Formatted error string with message and context joined by " | "
         """
-        parts = [self.message]
+        parts: list[str] = [self.message]
         parts.extend(self.get_context_parts())
         return " | ".join(parts)
 
 
-class BaseLoadingError(BaseTransparencyError):
-    """Base exception for loading operations.
-
-    Adds file path context that's common to all loading operations.
-    """
-
-    __slots__ = ("file_path",)
-
-    def __init__(self, message: str, file_path: Path | None = None):
-        """Initialize loading error with optional file context.
-
-        Args:
-            message: The error message
-            file_path: Optional path to the file being loaded
-        """
-        super().__init__(message)
-        self.file_path = file_path
-
-    def get_context_parts(self) -> list[str]:
-        """Add file path to context if available."""
-        parts = super().get_context_parts()
-        if self.file_path:
-            parts.append(f"File: {self.file_path}")
-        return parts
-
-
-class BaseValidationError(BaseTransparencyError):
-    """Base exception for validation operations.
-
-    Can be extended by domain-specific validation errors to add
-    validation-specific context.
-    """
-
-    __slots__ = ("validation_context",)
-
-    def __init__(self, message: str, validation_context: str | None = None):
-        """Initialize validation error with optional context.
-
-        Args:
-            message: The validation error message
-            validation_context: Optional context about what was being validated
-        """
-        super().__init__(message)
-        self.validation_context = validation_context
-
-    def get_context_parts(self) -> list[str]:
-        """Add validation context if available."""
-        parts = super().get_context_parts()
-        if self.validation_context:
-            parts.append(f"Context: {self.validation_context}")
-        return parts
-
-
-class BaseProcessingError(BaseTransparencyError):
-    """Base exception for processing operations.
-
-    Adds processing context for operations that transform or analyze data.
-    """
-
-    __slots__ = ("operation", "item_id")
-
-    def __init__(self, message: str, operation: str | None = None, item_id: str | None = None):
-        """Initialize processing error with optional context.
-
-        Args:
-            message: The error message
-            operation: Optional name of the operation being performed
-            item_id: Optional identifier of the item being processed
-        """
-        super().__init__(message)
-        self.operation = operation
-        self.item_id = item_id
-
-    def get_context_parts(self) -> list[str]:
-        """Add processing context if available."""
-        parts = super().get_context_parts()
-        if self.operation:
-            parts.append(f"Operation: {self.operation}")
-        if self.item_id:
-            parts.append(f"Item: {self.item_id}")
-        return parts
-
-
 # ============================================================================
-# Common error types that extend the base classes
+# Specialized base classes for common operation types
 # ============================================================================
 
 
-class LoadingFileNotFoundError(BaseLoadingError):
-    """File could not be found during loading operation."""
+class OperationError(BaseTransparencyError):
+    """Base exception for operations with progress tracking.
 
-
-class LoadingParsingError(BaseLoadingError):
-    """File could not be parsed (YAML, JSON, etc.)."""
-
-    __slots__ = ("parser_type",)
-
-    def __init__(self, message: str, file_path: Path | None = None, parser_type: str | None = None):
-        """Initialize parsing error with parser context.
-
-        Args:
-            message: The parsing error message
-            file_path: Optional path to the file that failed to parse
-            parser_type: Optional type of parser used (e.g., "YAML", "JSON")
-        """
-        super().__init__(message, file_path)
-        self.parser_type = parser_type
-
-    def get_context_parts(self) -> list[str]:
-        """Add parser type to context if available."""
-        parts = super().get_context_parts()
-        if self.parser_type:
-            parts.append(f"Parser: {self.parser_type}")
-        return parts
-
-
-class LoadingValidationError(BaseLoadingError):
-    """File content failed validation checks."""
-
-    __slots__ = ("validation_rule",)
+    Convenient base for batch processing, phase validation, and other
+    operations that process multiple items with progress tracking.
+    """
 
     def __init__(
-        self, message: str, file_path: Path | None = None, validation_rule: str | None = None
-    ):
-        """Initialize validation error with rule context.
+        self,
+        message: str,
+        *,
+        operation: str | None = None,
+        phase_name: str | None = None,
+        stage: str | None = None,
+        processed_count: int | None = None,
+        total_count: int | None = None,
+        batch_size: int | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize operation error with operation context."""
+        super().__init__(
+            message,
+            operation=operation,
+            phase_name=phase_name,
+            stage=stage,
+            processed_count=processed_count,
+            total_count=total_count,
+            batch_size=batch_size,
+            **kwargs,
+        )
 
-        Args:
-            message: The validation error message
-            file_path: Optional path to the file that failed validation
-            validation_rule: Optional name of the validation rule that failed
-        """
-        super().__init__(message, file_path)
-        self.validation_rule = validation_rule
 
-    def get_context_parts(self) -> list[str]:
-        """Add validation rule to context if available."""
-        parts = super().get_context_parts()
-        if self.validation_rule:
-            parts.append(f"Rule: {self.validation_rule}")
-        return parts
+class ResourceError(BaseTransparencyError):
+    """Base exception for resource-constrained operations.
+
+    Convenient base for timeout, memory, disk space, and other
+    resource-related errors.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        resource_type: str | None = None,
+        timeout_seconds: float | None = None,
+        elapsed_seconds: float | None = None,
+        limit_reached: str | None = None,
+        resource_usage: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize resource error with resource context."""
+        super().__init__(
+            message,
+            resource_type=resource_type,
+            timeout_seconds=timeout_seconds,
+            elapsed_seconds=elapsed_seconds,
+            limit_reached=limit_reached,
+            resource_usage=resource_usage,
+            **kwargs,
+        )
+
+
+class ValidationError(BaseTransparencyError):
+    """Base exception for validation operations.
+
+    Convenient base for schema validation, rule checking, and other
+    validation-related errors.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        validation_context: str | None = None,
+        validation_rule: str | None = None,
+        schema_name: str | None = None,
+        field_path: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize validation error with validation context."""
+        super().__init__(
+            message,
+            validation_context=validation_context,
+            validation_rule=validation_rule,
+            schema_name=schema_name,
+            field_path=field_path,
+            **kwargs,
+        )
+
+
+class FileError(BaseTransparencyError):
+    """Base exception for file-based operations.
+
+    Convenient base for file loading, parsing, and other
+    file-related errors.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize file error with file context."""
+        super().__init__(message, file_path=file_path, **kwargs)
+
+
+# ============================================================================
+# Common error types using the enhanced base
+# ============================================================================
+
+
+class LoadingError(FileError):
+    """File could not be loaded."""
+
+
+class ParsingError(FileError):
+    """File could not be parsed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        file_path: Path | str | None = None,
+        parser_type: str | None = None,
+        line_number: int | None = None,
+        parse_details: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize parsing error with parser context."""
+        # Build comprehensive parser validation context
+        context_parts: list[str] = []
+        if parser_type:
+            context_parts.append(f"Parser: {parser_type}")
+        if line_number is not None:
+            context_parts.append(f"Line: {line_number}")
+        if parse_details:
+            context_parts.append(f"Details: {parse_details}")
+
+        validation_context = " | ".join(context_parts) if context_parts else None
+
+        super().__init__(
+            message,
+            file_path=file_path,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
 class ConfigurationError(BaseTransparencyError):
     """Configuration is invalid or incomplete."""
 
-    __slots__ = ("config_key", "config_file")
-
     def __init__(
-        self, message: str, config_key: str | None = None, config_file: Path | None = None
-    ):
-        """Initialize configuration error with config context.
-
-        Args:
-            message: The configuration error message
-            config_key: Optional configuration key that caused the error
-            config_file: Optional path to the configuration file
-        """
-        super().__init__(message)
-        self.config_key = config_key
-        self.config_file = config_file
-
-    def get_context_parts(self) -> list[str]:
-        """Add configuration context if available."""
-        parts = super().get_context_parts()
-        if self.config_key:
-            parts.append(f"Config: {self.config_key}")
-        if self.config_file:
-            parts.append(f"File: {self.config_file}")
-        return parts
+        self,
+        message: str,
+        *,
+        config_key: str | None = None,
+        config_file: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize configuration error with config context."""
+        super().__init__(
+            message,
+            item_id=config_key,  # Use item_id for config key
+            file_path=config_file,
+            **kwargs,
+        )
 
 
-class VersionError(BaseTransparencyError):
-    """Version compatibility or format error."""
-
-    __slots__ = ("version_found", "version_expected")
-
-    def __init__(
-        self, message: str, version_found: str | None = None, version_expected: str | None = None
-    ):
-        """Initialize version error with version context.
-
-        Args:
-            message: The version error message
-            version_found: Optional version that was found
-            version_expected: Optional version that was expected
-        """
-        super().__init__(message)
-        self.version_found = version_found
-        self.version_expected = version_expected
-
-    def get_context_parts(self) -> list[str]:
-        """Add version information to context if available."""
-        parts = super().get_context_parts()
-        if self.version_found:
-            parts.append(f"Found: {self.version_found}")
-        if self.version_expected:
-            parts.append(f"Expected: {self.version_expected}")
-        return parts
-
-
-class SchemaError(BaseValidationError):
-    """Schema validation failed."""
-
-    __slots__ = ("schema_name", "field_path")
+class TransparencyTimeoutError(ResourceError):
+    """Operation timed out."""
 
     def __init__(
         self,
         message: str,
-        validation_context: str | None = None,
-        schema_name: str | None = None,
-        field_path: str | None = None,
-    ):
-        """Initialize schema error with schema context.
-
-        Args:
-            message: The schema validation error message
-            validation_context: Optional validation context
-            schema_name: Optional name of the schema
-            field_path: Optional path to the field that failed (e.g., "data.items[0].id")
-        """
-        super().__init__(message, validation_context)
-        self.schema_name = schema_name
-        self.field_path = field_path
-
-    def get_context_parts(self) -> list[str]:
-        """Add schema context if available."""
-        parts = super().get_context_parts()
-        if self.schema_name:
-            parts.append(f"Schema: {self.schema_name}")
-        if self.field_path:
-            parts.append(f"Field: {self.field_path}")
-        return parts
-
-
-class NetworkError(BaseTransparencyError):
-    """Network operation failed."""
-
-    __slots__ = ("url", "status_code")
-
-    def __init__(self, message: str, url: str | None = None, status_code: int | None = None):
-        """Initialize network error with network context.
-
-        Args:
-            message: The network error message
-            url: Optional URL that was being accessed
-            status_code: Optional HTTP status code
-        """
-        super().__init__(message)
-        self.url = url
-        self.status_code = status_code
-
-    def get_context_parts(self) -> list[str]:
-        """Add network context if available."""
-        parts = super().get_context_parts()
-        if self.url:
-            parts.append(f"URL: {self.url}")
-        if self.status_code:
-            parts.append(f"Status: {self.status_code}")
-        return parts
-
-
-class TransparencyTimeoutError(BaseTransparencyError):
-    """Operation timed out."""
-
-    __slots__ = ("timeout_seconds", "operation")
-
-    def __init__(
-        self, message: str, timeout_seconds: float | None = None, operation: str | None = None
-    ):
-        """Initialize timeout error with timing context.
-
-        Args:
-            message: The timeout error message
-            timeout_seconds: Optional timeout duration that was exceeded
-            operation: Optional name of the operation that timed out
-        """
-        super().__init__(message)
-        self.timeout_seconds = timeout_seconds
-        self.operation = operation
-
-    def get_context_parts(self) -> list[str]:
-        """Add timeout context if available."""
-        parts = super().get_context_parts()
-        if self.operation:
-            parts.append(f"Operation: {self.operation}")
-        if self.timeout_seconds:
-            parts.append(f"Timeout: {self.timeout_seconds}s")
-        return parts
+        *,
+        timeout_seconds: float | None = None,
+        elapsed_seconds: float | None = None,
+        operation: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize timeout error with timing context."""
+        super().__init__(
+            message,
+            timeout_seconds=timeout_seconds,
+            elapsed_seconds=elapsed_seconds,
+            operation=operation,
+            **kwargs,
+        )
 
 
 class AbortedError(BaseTransparencyError):
     """Operation was aborted before completion."""
 
-    __slots__ = ("abort_reason",)
+    def __init__(
+        self,
+        message: str,
+        *,
+        abort_reason: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize aborted error with abort context."""
+        super().__init__(message, abort_reason=abort_reason, **kwargs)
 
-    def __init__(self, message: str, abort_reason: str | None = None):
-        """Initialize aborted error with reason.
 
-        Args:
-            message: The abort error message
-            abort_reason: Optional reason why the operation was aborted
-        """
-        super().__init__(message)
-        self.abort_reason = abort_reason
+class NetworkError(BaseTransparencyError):
+    """Network operation failed."""
 
-    def get_context_parts(self) -> list[str]:
-        """Add abort reason to context if available."""
-        parts = super().get_context_parts()
-        if self.abort_reason:
-            parts.append(f"Reason: {self.abort_reason}")
-        return parts
+    def __init__(
+        self,
+        message: str,
+        *,
+        url: str | None = None,
+        status_code: int | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize network error with network context."""
+        super().__init__(
+            message,
+            item_id=url,  # Use item_id for URL
+            error_code=str(status_code) if status_code else None,
+            **kwargs,
+        )
+
+
+__all__ = [
+    # Base error types
+    "BaseTransparencyError",
+    "OperationError",
+    "ResourceError",
+    "ValidationError",
+    "FileError",
+    # Common error types
+    "LoadingError",
+    "ParsingError",
+    "ConfigurationError",
+    "TransparencyTimeoutError",
+    "AbortedError",
+    "NetworkError",
+]

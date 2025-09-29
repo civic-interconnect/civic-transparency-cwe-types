@@ -1,125 +1,283 @@
-# Usage
+# Usage Guide
 
-Install the package in editable (development) mode with [uv](https://docs.astral.sh/uv/):
+This guide shows common patterns for using the **Civic Transparency CWE Types** library.
 
-```bash
-uv venv .venv
-uv pip install -e ".[dev,docs]"
-```
-
-Run tools without activating the venv:
+## Installation
 
 ```bash
-uv run pytest
-uv run ruff check .
+pip install civic-transparency-cwe-types
 ```
 
-Or activate manually if you want an interactive shell:
+## Core Concepts
 
-```bash
-source .venv/bin/activate       # Linux / macOS / WSL
-.\.venv\Scripts\activate        # Windows PowerShell
-```
+### Immutability & Composition
 
-## Basic Usage
-
-### Importing Types
+Operations **return new dataclass instances**; originals are never modified.
 
 ```python
-from ci.transparency.cwe.types.cwe_result_loading import CweLoadingResult
-from ci.transparency.cwe.types.base import BaseResult, add_error, merge_results
+from pathlib import Path
+from ci.transparency.cwe.types.cwe.results import CweLoadingResult, add_cwe
 
 result = CweLoadingResult()
-print(result.success_rate)
-```
-
-### Working with Base Results
-
-The types follow an immutable design - helper functions return new instances:
-
-```python
-from ci.transparency.cwe.types.base import BaseResult, add_error, add_warning
-
-# Start with a clean result
-result = BaseResult.ok()
-print(result.has_errors)  # False
-
-# Add an error (returns a new instance)
-result_with_error = add_error(result, "Validation failed")
-print(result_with_error.has_errors)  # True
-print(result.has_errors)  # Still False (original unchanged)
-
-# Chain operations
-final_result = add_warning(result_with_error, "Minor issue detected")
-print(final_result.total_issues)  # 2 (1 error + 1 warning)
-```
-
-### Loading Results
-
-Track success/failure rates for batch operations:
-
-```python
-from ci.transparency.cwe.types.loading import (
-    BaseLoadingResult, increment_loaded, increment_failed
+result2 = add_cwe(
+    result,
+    "CWE-79",
+    {"id": "CWE-79", "name": "Cross-site Scripting", "category": "injection", "relationships": []},
+    file_path=Path("cwe-79.yaml"),
 )
 
-# Start with empty loading result
-loading_result = BaseLoadingResult()
-
-# Process items (each call returns new instance)
-loading_result = increment_loaded(loading_result)
-loading_result = increment_loaded(loading_result)
-loading_result = increment_failed(loading_result)
-
-print(f"Success rate: {loading_result.success_rate}")  # 0.67 (2/3)
-print(f"Total attempted: {loading_result.total_attempted}")  # 3
+assert result is not result2
+print(result.cwe_count)   # 0
+print(result2.cwe_count)  # 1
 ```
 
-### Validation Results
+### Explicit Types, Strong Guarantees
 
-Track pass/fail validation outcomes:
+Helper functions preserve concrete result types:
 
 ```python
-from ci.transparency.cwe.types.validation import (
-    BaseValidationResult, increment_validation_passed, increment_validation_failed
+from ci.transparency.cwe.types.cwe.results import CweLoadingResult, add_cwe
+
+cwe_result = CweLoadingResult()
+updated = add_cwe(cwe_result, "CWE-89", {"id": "CWE-89", "name": "SQL Injection"})
+print(type(updated) is CweLoadingResult)  # True
+```
+
+## Base Building Blocks
+
+The domain results compose a few base structures:
+
+- `LoadingCounts` / `ValidationCounts` - tracked on results
+- `MessageCollection` - `errors`, `warnings`, `infos` with convenience properties
+
+Typically operate through domain helpers, but can also access them directly:
+
+```python
+from dataclasses import replace
+from ci.transparency.cwe.types.base.counts import LoadingCounts
+from ci.transparency.cwe.types.base.messages import MessageCollection
+
+loading = LoadingCounts()
+loading = replace(loading, loaded_count=loading.loaded_count + 1)
+
+messages = MessageCollection()
+messages = replace(messages, errors=messages.errors + ["Something went wrong"])
+print(messages.has_errors)  # True
+```
+
+---
+
+## CWE Domain
+
+### Load CWE data
+
+```python
+from pathlib import Path
+from ci.transparency.cwe.types.cwe.results import (
+    CweLoadingResult, add_cwe, track_invalid_file, get_cwe_loading_summary
 )
 
-validation_result = BaseValidationResult()
-validation_result = increment_validation_passed(validation_result)
-validation_result = increment_validation_failed(validation_result)
+result = CweLoadingResult()
 
-print(f"Pass rate: {validation_result.pass_rate}")  # 0.5
-print(f"Processed: {validation_result.total_processed}")  # 2
+# Add one CWE
+cwe79 = {
+    "id": "CWE-79",
+    "name": "Cross-site Scripting",
+    "category": "injection",
+    "relationships": [{"cwe_id": "CWE-80", "type": "child"}],
+}
+result = add_cwe(result, "CWE-79", cwe79, file_path=Path("cwe-79.yaml"))
+
+# Track a failed file
+result = track_invalid_file(result, Path("broken.yaml"), "Malformed YAML")
+
+summary = get_cwe_loading_summary(result)
+print(summary["cwes_loaded"], summary["failed_files"])
 ```
 
-### Merging Results
-
-Combine multiple results for aggregation:
+### Validate CWE records
 
 ```python
-from ci.transparency.cwe.types.base import merge_results
+from ci.transparency.cwe.types.cwe.results import (
+    CweValidationResult, validate_cwe, batch_validate_cwes, get_cwe_validation_summary
+)
 
-result1 = add_error(BaseResult.ok(), "Error 1")
-result2 = add_warning(BaseResult.ok(), "Warning 1")
+validation = CweValidationResult()
 
-combined = merge_results(result1, result2)
-print(combined.error_count)    # 1
-print(combined.warning_count)  # 1
-print(combined.total_issues)   # 2
+validation = validate_cwe(
+    validation,
+    "CWE-79",
+    {"id": "CWE-79", "name": "XSS", "description": "Reflected XSS"}
+)
+
+# Batch
+cwe_dict = {
+    "CWE-79": {"id": "CWE-79", "name": "XSS"},
+    "CWE-89": {"id": "CWE-89", "name": "SQL Injection"},
+}
+validation = batch_validate_cwes(validation, cwe_dict)
+
+print(validation.validated_count)
+print(validation.get_passed_cwes())
+print(validation.get_failed_cwes())
+
+summary = get_cwe_validation_summary(validation)
+print(summary["success_rate_percent"])
 ```
 
-## Design Principles
-
-- **Immutable**: All operations return new instances; originals never change
-- **Type-preserving**: Helper functions maintain your subclass types
-- **Memory-efficient**: Uses `__slots__` for better performance
-- **Truthiness**: Results evaluate to `False` when they have errors
+### Analyze CWE relationships
 
 ```python
-if result:
-    print("No errors found")
-else:
-    print(f"Found {result.error_count} errors")
+from ci.transparency.cwe.types.cwe.results import (
+    CweRelationshipResult, analyze_relationships, get_relationship_summary
+)
+
+rels = CweRelationshipResult()
+
+cwe_dict = {
+    "CWE-79": {"id": "CWE-79", "relationships": [{"cwe_id": "CWE-80", "type": "child"}]},
+    "CWE-80": {"id": "CWE-80", "relationships": [{"cwe_id": "CWE-79", "type": "parent"}]},
+}
+
+rels = analyze_relationships(rels, cwe_dict)
+
+print(rels.references.total_references_count)   # total relationships
+print(rels.circular_dependency_count)           # cycles detected
+print(rels.references.orphaned_item_count)      # CWEs with no edges
+
+summary = get_relationship_summary(rels)
+print(summary["relationship_types"])
 ```
 
-See the **API Reference** for the complete list of classes and helper functions.
+---
+
+## Standards Domain
+
+### Load standards
+
+```python
+from ci.transparency.cwe.types.standards.results import (
+    StandardsLoadingResult, add_standard, get_standards_loading_summary
+)
+
+standards = StandardsLoadingResult()
+
+nist = {
+    "id": "NIST-SP-800-53",
+    "name": "Security Controls",
+    "framework": "NIST",
+    "version": "Rev 5",
+    "controls": [],
+}
+standards = add_standard(standards, "NIST-SP-800-53", nist)
+
+print(standards.standards_count)
+print(standards.frameworks.framework_count)
+
+summary = get_standards_loading_summary(standards)
+print(summary["frameworks"])
+```
+
+### Analyze standards mappings
+
+```python
+from ci.transparency.cwe.types.standards.results import (
+    StandardsMappingResult, analyze_mappings, get_mapping_summary
+)
+
+mappings = StandardsMappingResult()
+
+standards_dict = {
+    "NIST-SP-800-53": {
+        "id": "NIST-SP-800-53",
+        "controls": [
+            {"id": "AC-1", "mappings": [{"target_id": "CWE-79", "mapping_type": "cwe"}]},
+        ],
+    }
+}
+
+mappings = analyze_mappings(mappings, standards_dict)
+print(mappings.total_mappings_count)
+print(mappings.references.invalid_reference_count)
+
+summary = get_mapping_summary(mappings)
+print(summary["mapping_types"])
+```
+
+---
+
+## CWE Schema (Domain-specific schema results)
+
+### Load schemas & set metadata
+
+```python
+from pathlib import Path
+from ci.transparency.cwe.types.cwe.schema.results import (
+    CweSchemaLoadingResult,
+    add_cwe_schema,
+    set_schema_metadata,
+    get_cwe_schema_loading_summary,
+)
+
+schemas = CweSchemaLoadingResult()
+schemas = set_schema_metadata(schemas, schema_name="cwe", schema_version="1.0")
+
+schema_item = {
+    "schema_name": "cwe",
+    "schema_version": "1.0",
+    "schema_content": {"type": "object", "properties": {"id": {"type": "string"}}},
+    "source_path": "cwe.schema.json",
+}
+schemas = add_cwe_schema(schemas, "cwe-1.0", schema_item, file_path=Path("cwe.schema.json"))
+
+summary = get_cwe_schema_loading_summary(schemas)
+print(summary["schema_name"], summary["file_types"])
+```
+
+### Build validation results
+
+```python
+from ci.transparency.cwe.types.cwe.schema.results import (
+    create_successful_validation,
+    create_failed_validation,
+    add_validation_error,
+    get_cwe_schema_validation_summary,
+)
+
+ok = create_successful_validation(
+    schema_name="cwe",
+    schema_version="1.0",
+    cwe_id="CWE-79",
+    field_path="id",
+    info_message="ID matches pattern",
+)
+
+bad = create_failed_validation(
+    schema_name="cwe",
+    schema_version="1.0",
+    cwe_id="CWE-79",
+    field_path="id",
+    error_messages=["Missing required: id"],
+)
+
+bad = add_validation_error(bad, "Unexpected field: foo")
+
+print(ok.is_successful)   # True
+print(bad.is_successful)  # False
+
+print(get_cwe_schema_validation_summary(bad)["errors"])
+```
+
+---
+
+## Tips
+
+- Import from leaf modules:
+  - `ci.transparency.cwe.types.cwe.results`
+  - `ci.transparency.cwe.types.standards.results`
+  - `ci.transparency.cwe.types.cwe.schema.results`
+  - `ci.transparency.cwe.types.base.messages` / `base.counts` / `base.collections`
+- All result types are **frozen dataclasses**; update via helper functions (which use `dataclasses.replace`).
+- Summaries (`get_*_summary`) provide ready-to-serialize dictionaries for reporting/logging.
+
+See the **API Reference** for module-by-module documentation.

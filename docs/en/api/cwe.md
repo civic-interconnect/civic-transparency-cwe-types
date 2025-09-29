@@ -11,6 +11,7 @@ show_signature: true
 group_by_category: true
 filters: - "!^*"
 
+
 ## CWE Errors
 
 ::: ci.transparency.cwe.types.cwe.errors

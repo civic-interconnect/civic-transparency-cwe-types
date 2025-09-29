@@ -1,223 +1,208 @@
-"""Standards domain error types with rich context.
+"""Standards domain error types using enhanced base classes.
 
-Domain-specific error hierarchy for standards operations. Extends base error types
-to provide standards-specific context like standard IDs, mapping information, and
-validation details.
+Domain-specific error hierarchy for standards operations. Each error inherits from
+exactly one enhanced base error class and leverages the flexible context system
+for standards-specific information.
 
 Design principles:
-    - Inherits consistent formatting from base error types
-    - Adds standards-specific context (standard IDs, mappings, formats)
-    - Provides specific exception types for different standards failure scenarios
-    - Maintains minimal memory overhead with __slots__
+    - Single inheritance: each error extends exactly one base error class
+    - Context-rich: uses the flexible context system for standards details
+    - Consistent: maintains uniform error formatting across all errors
+    - Minimal: leverages base class functionality rather than duplicating code
 
-Core standards errors:
-    - StandardsError: Base standards error with standard ID context
-    - StandardsLoadingError: Standards definition loading failures
-    - StandardsValidationError: Standards validation failures
-    - StandardsMappingError: Standards mapping validation failures
+Usage patterns:
+    - File operations → FileError, LoadingError, ParsingError
+    - Validation operations → ValidationError
+    - Processing operations → OperationError
+    - General operations → BaseTransparencyError
 
 Typical usage:
     from ci.transparency.cwe.types.standards import StandardsValidationError
 
-    try:
-        validate_standards_definition(standards_data)
-    except StandardsValidationError as e:
-        # Rich context: "Validation failed | Standard: NIST-SP-800-53 | Field: controls[0] | File: nist.yaml"
-        logger.error(f"Standards validation failed: {e}")
+    raise StandardsValidationError(
+        "Field validation failed",
+        item_id="NIST-SP-800-53",
+        field_path="controls[0].id",
+        validation_rule="required_field",
+        file_path="nist.yaml"
+    )
+    # Output: "Field validation failed | Item: NIST-SP-800-53 | Field: controls[0].id | Rule: required_field | File: nist.yaml"
 """
 
 from pathlib import Path
+from typing import Any
 
 from ci.transparency.cwe.types.base.errors import (
-    BaseLoadingError,
     BaseTransparencyError,
+    FileError,
+    LoadingError,
+    OperationError,
+    ParsingError,
+    ValidationError,
 )
 
+# ============================================================================
+# Standards loading error types (file-based operations)
+# ============================================================================
 
-class StandardsError(BaseLoadingError):
-    """Base exception for standards operations.
 
-    Extends BaseLoadingError to add standards-specific context like standard
-    identifiers and framework information.
-    """
-
-    __slots__ = ("standard_id", "framework")
+class StandardsLoadingError(LoadingError):
+    """Base standards loading error."""
 
     def __init__(
         self,
         message: str,
+        *,
         standard_id: str | None = None,
         framework: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
-        """Initialize standards error with standards-specific context.
+        """Initialize standards loading error.
 
         Args:
             message: The error message
             standard_id: Optional standard identifier (e.g., "NIST-SP-800-53")
             framework: Optional framework name (e.g., "NIST", "ISO")
             file_path: Optional file path where the error occurred
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, file_path)
-        self.standard_id = standard_id
-        self.framework = framework
-
-    def get_context_parts(self) -> list[str]:
-        """Add standards context to error message."""
-        parts = super().get_context_parts()
-
-        # Add standard ID first for prominence
-        if self.standard_id:
-            parts.insert(0, f"Standard: {self.standard_id}")
-
-        if self.framework:
-            parts.append(f"Framework: {self.framework}")
-
-        return parts
+        super().__init__(
+            message,
+            file_path=file_path,
+            item_id=standard_id,
+            validation_context=f"Framework: {framework}" if framework else None,
+            **kwargs,
+        )
 
 
-# ============================================================================
-# Standards loading error types
-# ============================================================================
-
-
-class StandardsLoadingError(StandardsError):
-    """Base standards loading error."""
-
-
-class StandardsFileNotFoundError(StandardsLoadingError):
+class StandardsFileNotFoundError(LoadingError):
     """Standards definition file could not be found."""
-
-
-class StandardsParsingError(StandardsLoadingError):
-    """Standards definition file could not be parsed."""
-
-    __slots__ = ("parser_type", "line_number", "parse_details")
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ):
+        """Initialize standards file not found error."""
+        super().__init__(message, file_path=file_path, item_id=standard_id, **kwargs)
+
+
+class StandardsParsingError(ParsingError):
+    """Standards definition file could not be parsed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        standard_id: str | None = None,
         parser_type: str | None = None,
         line_number: int | None = None,
         parse_details: str | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
-    ):
-        """Initialize standards parsing error.
-
-        Args:
-            message: The parsing error message
-            parser_type: Optional type of parser (e.g., "YAML", "JSON")
-            line_number: Optional line number where parsing failed
-            parse_details: Optional detailed parsing error information
-            standard_id: Optional standard identifier
-            file_path: Optional file path that failed to parse
-        """
-        super().__init__(message, standard_id, None, file_path)
-        self.parser_type = parser_type
-        self.line_number = line_number
-        self.parse_details = parse_details
-
-    def get_context_parts(self) -> list[str]:
-        """Add parsing context to error message."""
-        parts = super().get_context_parts()
-
-        if self.parser_type:
-            parts.append(f"Parser: {self.parser_type}")
-
-        if self.line_number is not None:
-            parts.append(f"Line: {self.line_number}")
-
-        if self.parse_details:
-            parts.append(f"Details: {self.parse_details}")
-
-        return parts
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize standards parsing error."""
+        # Let base ParsingError handle parser context building
+        super().__init__(
+            message,
+            file_path=file_path,
+            parser_type=parser_type,
+            line_number=line_number,
+            parse_details=parse_details,
+            item_id=standard_id,  # Standards-specific context
+            **kwargs,
+        )
 
 
-class StandardsInvalidFormatError(StandardsLoadingError):
+class StandardsInvalidFormatError(FileError):
     """Standards definition format is invalid or unsupported."""
-
-    __slots__ = ("detected_format", "supported_formats", "format_issue")
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
         detected_format: str | None = None,
         supported_formats: list[str] | None = None,
         format_issue: str | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards invalid format error.
 
         Args:
             message: The format error message
+            standard_id: Optional standard identifier
             detected_format: Optional detected format
             supported_formats: Optional list of supported formats
             format_issue: Optional description of the format issue
-            standard_id: Optional standard identifier
             file_path: Optional file path with format issue
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, standard_id, None, file_path)
-        self.detected_format = detected_format
-        self.supported_formats = supported_formats or []
-        self.format_issue = format_issue
+        # Build validation context with format details
+        context_parts: list[str] = []
+        if detected_format:
+            context_parts.append(f"Detected: {detected_format}")
+        if supported_formats:
+            supported = ", ".join(supported_formats)
+            context_parts.append(f"Supported: {supported}")
+        if format_issue:
+            context_parts.append(f"Issue: {format_issue}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add format context to error message."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.detected_format:
-            parts.append(f"Detected: {self.detected_format}")
-
-        if self.supported_formats:
-            supported = ", ".join(self.supported_formats)
-            parts.append(f"Supported: {supported}")
-
-        if self.format_issue:
-            parts.append(f"Issue: {self.format_issue}")
-
-        return parts
+        super().__init__(
+            message,
+            file_path=file_path,
+            item_id=standard_id,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
-class StandardsMissingFieldError(StandardsLoadingError):
+class StandardsMissingFieldError(LoadingError):
     """Required standards field is missing from definition."""
-
-    __slots__ = ("field_name", "required_fields")
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
         field_name: str | None = None,
         required_fields: list[str] | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards missing field error.
 
         Args:
             message: The missing field error message
+            standard_id: Optional standard identifier
             field_name: Optional name of the missing field
             required_fields: Optional list of all required fields
-            standard_id: Optional standard identifier
             file_path: Optional file path with missing field
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, standard_id, None, file_path)
-        self.field_name = field_name
-        self.required_fields = required_fields or []
+        # Build validation context with field requirements
+        context_parts: list[str] = []
+        if required_fields:
+            required = ", ".join(required_fields)
+            context_parts.append(f"Required: {required}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add missing field context to error message."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.field_name:
-            parts.append(f"Field: {self.field_name}")
-
-        if self.required_fields:
-            required = ", ".join(self.required_fields)
-            parts.append(f"Required: {required}")
-
-        return parts
+        super().__init__(
+            message,
+            file_path=file_path,
+            item_id=standard_id,
+            field_path=field_name,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
 # ============================================================================
@@ -225,137 +210,142 @@ class StandardsMissingFieldError(StandardsLoadingError):
 # ============================================================================
 
 
-class StandardsValidationError(StandardsError):
+class StandardsValidationError(ValidationError):
     """Base standards validation error."""
-
-    __slots__ = ("validation_type",)
 
     def __init__(
         self,
         message: str,
-        validation_type: str | None = None,
+        *,
         standard_id: str | None = None,
         framework: str | None = None,
-        file_path: Path | None = None,
+        validation_type: str | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards validation error.
 
         Args:
             message: The validation error message
-            validation_type: Optional type of validation (e.g., "field", "mapping", "constraint")
             standard_id: Optional standard identifier
             framework: Optional framework name
+            validation_type: Optional type of validation
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, standard_id, framework, file_path)
-        self.validation_type = validation_type
+        # Build validation context with framework and type
+        context_parts: list[str] = []
+        if framework:
+            context_parts.append(f"Framework: {framework}")
+        if validation_type:
+            context_parts.append(f"Type: {validation_type}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add validation type to context."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.validation_type:
-            parts.append(f"Validation: {self.validation_type}")
+        super().__init__(
+            message,
+            item_id=standard_id,
+            file_path=file_path,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
-        return parts
 
-
-class StandardsFieldValidationError(StandardsValidationError):
+class StandardsFieldValidationError(ValidationError):
     """Standards field-level validation failed."""
-
-    __slots__ = ("field_name", "field_value", "validation_rule", "expected_value")
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
         field_name: str | None = None,
         field_value: str | None = None,
         validation_rule: str | None = None,
         expected_value: str | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards field validation error.
 
         Args:
             message: The field validation error message
+            standard_id: Optional standard identifier
             field_name: Optional name of the field that failed validation
             field_value: Optional actual value of the field
             validation_rule: Optional validation rule that was violated
             expected_value: Optional expected value for the field
-            standard_id: Optional standard identifier
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, "field", standard_id, None, file_path)
-        self.field_name = field_name
-        self.field_value = field_value
-        self.validation_rule = validation_rule
-        self.expected_value = expected_value
+        # Build validation context with field details
+        context_parts: list[str] = []
+        if field_value is not None:
+            context_parts.append(f"Value: {field_value}")
+        if expected_value:
+            context_parts.append(f"Expected: {expected_value}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add field validation details to context."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.field_name:
-            parts.append(f"Field: {self.field_name}")
-
-        if self.field_value is not None:
-            parts.append(f"Value: {self.field_value}")
-
-        if self.expected_value:
-            parts.append(f"Expected: {self.expected_value}")
-
-        if self.validation_rule:
-            parts.append(f"Rule: {self.validation_rule}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=standard_id,
+            field_path=field_name,
+            validation_rule=validation_rule,
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
-class StandardsConstraintViolationError(StandardsValidationError):
+class StandardsConstraintViolationError(ValidationError):
     """Standards constraint validation failed."""
-
-    __slots__ = ("constraint_name", "expected", "actual")
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
+        framework: str | None = None,
         constraint_name: str | None = None,
         expected: str | None = None,
         actual: str | None = None,
-        standard_id: str | None = None,
-        framework: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards constraint violation error.
 
         Args:
             message: The constraint violation error message
+            standard_id: Optional standard identifier
+            framework: Optional framework name
             constraint_name: Optional name of the constraint
             expected: Optional expected constraint value
             actual: Optional actual value that violated the constraint
-            standard_id: Optional standard identifier
-            framework: Optional framework name
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, "constraint", standard_id, framework, file_path)
-        self.constraint_name = constraint_name
-        self.expected = expected
-        self.actual = actual
+        # Build validation context with constraint details
+        context_parts: list[str] = []
+        if framework:
+            context_parts.append(f"Framework: {framework}")
+        if constraint_name:
+            context_parts.append(f"Constraint: {constraint_name}")
+        if expected:
+            context_parts.append(f"Expected: {expected}")
+        if actual:
+            context_parts.append(f"Actual: {actual}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add constraint details to context."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.constraint_name:
-            parts.append(f"Constraint: {self.constraint_name}")
-
-        if self.expected:
-            parts.append(f"Expected: {self.expected}")
-
-        if self.actual:
-            parts.append(f"Actual: {self.actual}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=standard_id,
+            validation_rule="constraint",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
 # ============================================================================
@@ -363,129 +353,142 @@ class StandardsConstraintViolationError(StandardsValidationError):
 # ============================================================================
 
 
-class StandardsMappingError(StandardsError):
+class StandardsMappingError(ValidationError):
     """Base standards mapping validation error."""
-
-    __slots__ = ("mapping_key", "target_id", "mapping_type")
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
         mapping_key: str | None = None,
         target_id: str | None = None,
         mapping_type: str | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards mapping error.
 
         Args:
             message: The mapping error message
+            standard_id: Optional standard identifier
             mapping_key: Optional mapping key or control ID
             target_id: Optional target ID being mapped to (e.g., CWE ID)
             mapping_type: Optional type of mapping (e.g., "cwe", "control")
-            standard_id: Optional standard identifier
             file_path: Optional file path being processed
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, standard_id, None, file_path)
-        self.mapping_key = mapping_key
-        self.target_id = target_id
-        self.mapping_type = mapping_type
+        # Build validation context with mapping details
+        context_parts: list[str] = []
+        if mapping_key:
+            context_parts.append(f"Mapping: {mapping_key}")
+        if target_id:
+            context_parts.append(f"Target: {target_id}")
+        if mapping_type:
+            context_parts.append(f"Type: {mapping_type}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add mapping context to error message."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.mapping_key:
-            parts.append(f"Mapping: {self.mapping_key}")
-
-        if self.target_id:
-            parts.append(f"Target: {self.target_id}")
-
-        if self.mapping_type:
-            parts.append(f"Type: {self.mapping_type}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=standard_id,
+            validation_rule="mapping",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
 
-class StandardsInvalidMappingError(StandardsMappingError):
+class StandardsInvalidMappingError(ValidationError):
     """Standards mapping references unknown target ID."""
-
-    __slots__ = ("reference_source",)
 
     def __init__(
         self,
         message: str,
-        target_id: str | None = None,
-        mapping_key: str | None = None,
-        reference_source: str | None = None,
+        *,
         standard_id: str | None = None,
-        file_path: Path | None = None,
+        mapping_key: str | None = None,
+        target_id: str | None = None,
+        reference_source: str | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards invalid mapping error.
 
         Args:
             message: The invalid mapping error message
-            target_id: Optional target ID that couldn't be found
-            mapping_key: Optional mapping key that failed
-            reference_source: Optional source of the reference (e.g., "cwe_mappings", "controls")
             standard_id: Optional standard identifier
+            mapping_key: Optional mapping key that failed
+            target_id: Optional target ID that couldn't be found
+            reference_source: Optional source of the reference
             file_path: Optional file path being validated
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, mapping_key, target_id, "invalid", standard_id, file_path)
-        self.reference_source = reference_source
+        # Build validation context with reference details
+        context_parts: list[str] = []
+        if mapping_key:
+            context_parts.append(f"Mapping: {mapping_key}")
+        if target_id:
+            context_parts.append(f"Target: {target_id}")
+        if reference_source:
+            context_parts.append(f"Source: {reference_source}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add reference source to context."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.reference_source:
-            parts.append(f"Source: {self.reference_source}")
+        super().__init__(
+            message,
+            item_id=standard_id,
+            validation_rule="invalid_mapping",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
 
-        return parts
 
-
-class StandardsDuplicateMappingError(StandardsMappingError):
+class StandardsDuplicateMappingError(ValidationError):
     """Duplicate standards mapping detected."""
-
-    __slots__ = ("existing_target", "duplicate_target")
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
         mapping_key: str | None = None,
         existing_target: str | None = None,
         duplicate_target: str | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards duplicate mapping error.
 
         Args:
             message: The duplicate mapping error message
+            standard_id: Optional standard identifier
             mapping_key: Optional mapping key that's duplicated
             existing_target: Optional existing target ID
             duplicate_target: Optional duplicate target ID
-            standard_id: Optional standard identifier
             file_path: Optional file path being processed
+            **kwargs: Additional context passed to base class
         """
+        # Build validation context with duplicate details
+        context_parts: list[str] = []
+        if mapping_key:
+            context_parts.append(f"Mapping: {mapping_key}")
+        if existing_target:
+            context_parts.append(f"Existing: {existing_target}")
+        if duplicate_target:
+            context_parts.append(f"Duplicate: {duplicate_target}")
+
+        validation_context = " | ".join(context_parts) if context_parts else None
+
         super().__init__(
-            message, mapping_key, duplicate_target, "duplicate", standard_id, file_path
+            message,
+            item_id=standard_id,
+            validation_rule="duplicate_mapping",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
         )
-        self.existing_target = existing_target
-        self.duplicate_target = duplicate_target
-
-    def get_context_parts(self) -> list[str]:
-        """Add duplicate mapping context to error message."""
-        parts = super().get_context_parts()
-
-        if self.existing_target:
-            parts.append(f"Existing: {self.existing_target}")
-
-        if self.duplicate_target:
-            parts.append(f"Duplicate: {self.duplicate_target}")
-
-        return parts
 
 
 # ============================================================================
@@ -493,43 +496,45 @@ class StandardsDuplicateMappingError(StandardsMappingError):
 # ============================================================================
 
 
-class StandardsFormatError(StandardsError):
+class StandardsFormatError(FileError):
     """Standards formatting/serialization problem."""
-
-    __slots__ = ("format_type", "export_template")
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
         format_type: str | None = None,
         export_template: str | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards format error.
 
         Args:
             message: The format error message
+            standard_id: Optional standard identifier
             format_type: Optional format type (e.g., "export", "template")
             export_template: Optional export template name
-            standard_id: Optional standard identifier
             file_path: Optional file path with format issue
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message, standard_id, None, file_path)
-        self.format_type = format_type
-        self.export_template = export_template
+        # Build validation context with format details
+        context_parts: list[str] = []
+        if format_type:
+            context_parts.append(f"Format: {format_type}")
+        if export_template:
+            context_parts.append(f"Template: {export_template}")
 
-    def get_context_parts(self) -> list[str]:
-        """Add format context to error message."""
-        parts = super().get_context_parts()
+        validation_context = " | ".join(context_parts) if context_parts else None
 
-        if self.format_type:
-            parts.append(f"Format: {self.format_type}")
-
-        if self.export_template:
-            parts.append(f"Template: {self.export_template}")
-
-        return parts
+        super().__init__(
+            message,
+            file_path=file_path,
+            item_id=standard_id,
+            validation_context=validation_context,
+            **kwargs,
+        )
 
 
 # ============================================================================
@@ -537,17 +542,99 @@ class StandardsFormatError(StandardsError):
 # ============================================================================
 
 
-class StandardsConfigurationError(BaseTransparencyError):
-    """Standards configuration error."""
-
-    __slots__ = ("config_key", "config_value", "valid_values")
+class StandardsProcessingError(OperationError):
+    """Standards processing operation failed."""
 
     def __init__(
         self,
         message: str,
+        *,
+        standard_id: str | None = None,
+        operation: str | None = None,
+        stage: str | None = None,
+        processed_count: int | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ):
+        """Initialize standards processing error.
+
+        Args:
+            message: The processing error message
+            standard_id: Optional standard identifier
+            operation: Optional name of the operation being performed
+            stage: Optional processing stage
+            processed_count: Optional number of items processed before failure
+            file_path: Optional file path being processed
+            **kwargs: Additional context passed to base class
+        """
+        super().__init__(
+            message,
+            operation=operation,
+            stage=stage,
+            processed_count=processed_count,
+            item_id=standard_id,
+            file_path=file_path,
+            **kwargs,
+        )
+
+
+class StandardsIntegrityError(ValidationError):
+    """Standards data integrity violation."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        standard_id: str | None = None,
+        integrity_check: str | None = None,
+        expected_value: str | None = None,
+        actual_value: str | None = None,
+        file_path: Path | str | None = None,
+        **kwargs: Any,
+    ):
+        """Initialize standards integrity error.
+
+        Args:
+            message: The integrity error message
+            standard_id: Optional standard identifier
+            integrity_check: Optional name of the integrity check that failed
+            expected_value: Optional expected value
+            actual_value: Optional actual value found
+            file_path: Optional file path being checked
+            **kwargs: Additional context passed to base class
+        """
+        # Build validation context with integrity details
+        context_parts: list[str] = []
+        if integrity_check:
+            context_parts.append(f"Check: {integrity_check}")
+        if expected_value:
+            context_parts.append(f"Expected: {expected_value}")
+        if actual_value:
+            context_parts.append(f"Actual: {actual_value}")
+
+        validation_context = " | ".join(context_parts) if context_parts else None
+
+        super().__init__(
+            message,
+            item_id=standard_id,
+            validation_rule="integrity",
+            validation_context=validation_context,
+            file_path=file_path,
+            **kwargs,
+        )
+
+
+class StandardsConfigurationError(BaseTransparencyError):
+    """Standards configuration error."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
         config_key: str | None = None,
         config_value: str | None = None,
         valid_values: list[str] | None = None,
+        **kwargs: Any,
     ):
         """Initialize standards configuration error.
 
@@ -556,114 +643,41 @@ class StandardsConfigurationError(BaseTransparencyError):
             config_key: Optional configuration key that caused the error
             config_value: Optional invalid configuration value
             valid_values: Optional list of valid configuration values
+            **kwargs: Additional context passed to base class
         """
-        super().__init__(message)
-        self.config_key = config_key
-        self.config_value = config_value
-        self.valid_values = valid_values or []
+        # Build validation context with valid values
+        validation_context = None
+        if valid_values:
+            valid_str = ", ".join(valid_values)
+            validation_context = f"Valid: {valid_str}"
 
-    def get_context_parts(self) -> list[str]:
-        """Add configuration context to error message."""
-        parts = super().get_context_parts()
-
-        if self.config_key:
-            parts.append(f"Config: {self.config_key}")
-
-        if self.config_value:
-            parts.append(f"Value: {self.config_value}")
-
-        if self.valid_values:
-            valid_str = ", ".join(self.valid_values)
-            parts.append(f"Valid: {valid_str}")
-
-        return parts
+        super().__init__(
+            message,
+            item_id=config_key,
+            validation_context=validation_context,
+            error_code=config_value,
+            **kwargs,
+        )
 
 
-class StandardsProcessingError(StandardsError):
-    """Standards processing operation failed."""
+# ============================================================================
+# Public API (alphabetical)
+# ============================================================================
 
-    __slots__ = ("operation", "stage", "processed_count")
-
-    def __init__(
-        self,
-        message: str,
-        operation: str | None = None,
-        stage: str | None = None,
-        processed_count: int | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
-    ):
-        """Initialize standards processing error.
-
-        Args:
-            message: The processing error message
-            operation: Optional name of the operation being performed
-            stage: Optional processing stage (e.g., "loading", "validation", "mapping")
-            processed_count: Optional number of items processed before failure
-            standard_id: Optional standard identifier
-            file_path: Optional file path being processed
-        """
-        super().__init__(message, standard_id, None, file_path)
-        self.operation = operation
-        self.stage = stage
-        self.processed_count = processed_count
-
-    def get_context_parts(self) -> list[str]:
-        """Add processing context to error message."""
-        parts = super().get_context_parts()
-
-        if self.operation:
-            parts.append(f"Operation: {self.operation}")
-
-        if self.stage:
-            parts.append(f"Stage: {self.stage}")
-
-        if self.processed_count is not None:
-            parts.append(f"Processed: {self.processed_count}")
-
-        return parts
-
-
-class StandardsIntegrityError(StandardsError):
-    """Standards data integrity violation."""
-
-    __slots__ = ("integrity_check", "expected_value", "actual_value")
-
-    def __init__(
-        self,
-        message: str,
-        integrity_check: str | None = None,
-        expected_value: str | None = None,
-        actual_value: str | None = None,
-        standard_id: str | None = None,
-        file_path: Path | None = None,
-    ):
-        """Initialize standards integrity error.
-
-        Args:
-            message: The integrity error message
-            integrity_check: Optional name of the integrity check that failed
-            expected_value: Optional expected value
-            actual_value: Optional actual value found
-            standard_id: Optional standard identifier
-            file_path: Optional file path being checked
-        """
-        super().__init__(message, standard_id, None, file_path)
-        self.integrity_check = integrity_check
-        self.expected_value = expected_value
-        self.actual_value = actual_value
-
-    def get_context_parts(self) -> list[str]:
-        """Add integrity check details to context."""
-        parts = super().get_context_parts()
-
-        if self.integrity_check:
-            parts.append(f"Check: {self.integrity_check}")
-
-        if self.expected_value:
-            parts.append(f"Expected: {self.expected_value}")
-
-        if self.actual_value:
-            parts.append(f"Actual: {self.actual_value}")
-
-        return parts
+__all__ = [
+    "StandardsConfigurationError",
+    "StandardsConstraintViolationError",
+    "StandardsDuplicateMappingError",
+    "StandardsFieldValidationError",
+    "StandardsFileNotFoundError",
+    "StandardsFormatError",
+    "StandardsIntegrityError",
+    "StandardsInvalidFormatError",
+    "StandardsInvalidMappingError",
+    "StandardsLoadingError",
+    "StandardsMappingError",
+    "StandardsMissingFieldError",
+    "StandardsParsingError",
+    "StandardsProcessingError",
+    "StandardsValidationError",
+]
